@@ -1,32 +1,24 @@
-import { MongoClient } from "mongodb";
+// src/lib/mongodb.ts
+import mongoose from 'mongoose';
 
-const uri = process.env.MONGODB_URI!;
-const options = {};
+const MONGODB_URI = process.env.MONGODB_URI!;
 
-if (!uri) {
+if (!MONGODB_URI) {
   throw new Error("⚠️ Defina MONGODB_URI no .env.local");
 }
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+let isConnected = false;
 
-declare global {
-  var _mongoClientPromise: Promise<MongoClient> | undefined;
-}
+export const connectDB = async () => {
+  if (isConnected) return;
 
-if (process.env.NODE_ENV === "development") {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options);
-    global._mongoClientPromise = client.connect();
+  try {
+    const db = await mongoose.connect(MONGODB_URI);
+    isConnected = true;
+    console.log('✅ MongoDB conectado com sucesso');
+    return db;
+  } catch (err) {
+    console.error('❌ Erro ao conectar ao MongoDB:', err);
+    throw err;
   }
-  clientPromise = global._mongoClientPromise!;
-} else {
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
-}
-
-// Aqui exporta como função nomeada
-export const connectDB = async () => await clientPromise;
-
-// Ou como default
-export default clientPromise;
+};

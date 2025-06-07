@@ -1,7 +1,7 @@
-import connectDB from "@/lib/mongodb";
-import Channel from "@/models/Channel";
+import { connectDB } from '@lib/mongodb'
+import Channel from "@models/Channel";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@authOptions";
+import { authOptions } from "@auth/[...nextauth]/authOption";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
