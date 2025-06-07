@@ -1,120 +1,99 @@
-// src/app/videos/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import AuthGuard from '@/components/auth/AuthGuard';
-import { Button } from '@/components/ui/button';
-import { Loader, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-interface Video {
-  _id: string;
+type Video = {
+  videoId: string;
   title: string;
+  publishedAt: string;
   thumbnail: string;
-  url: string;
-  aiAnalysis?: {
-    analyzed: boolean;
-    summary?: string;
-    analyzedAt?: string;
-  };
-  category?: {
-    _id: string;
-    name: string;
-    color: string;
-  };
-}
+};
+
+type Canal = {
+  canalId: string;
+  canalNome: string;
+  videos: Video[];
+};
+
+type Categoria = {
+  categoriaNome: string;
+  canais: Canal[];
+};
 
 export default function VideosPage() {
-  return (
-    <AuthGuard>
-      <VideosContent />
-    </AuthGuard>
-  );
-}
-
-function VideosContent() {
-  const { user } = useAuth();
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [dados, setDados] = useState<Categoria[]>([]);
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todas');
+  const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
-    fetch('/api/user-videos')
-      .then(res => res.json())
-      .then(data => setVideos(data.videos || []))
-      .finally(() => setLoading(false));
+    const buscar = async () => {
+      setCarregando(true);
+      const res = await fetch('/api/videos', { credentials: 'include' });
+      const data = await res.json();
+      setDados(data);
+      setCarregando(false);
+    };
+
+    buscar();
   }, []);
 
-  const analyzeVideo = async (videoId: string) => {
-    setAnalyzingId(videoId);
-    const res = await fetch('/api/videos/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoId })
-    });
+  const categorias = ['todas', ...dados.map(d => d.categoriaNome)];
 
-    if (res.ok) {
-      alert('✅ Análise concluída!');
-      // Reload vídeos após análise
-      const updated = await fetch('/api/user-videos').then(r => r.json());
-      setVideos(updated.videos);
-    } else {
-      const err = await res.json();
-      alert('Erro ao analisar: ' + err.error);
-    }
+  const categoriasFiltradas = categoriaFiltro === 'todas'
+    ? dados
+    : dados.filter(c => c.categoriaNome === categoriaFiltro);
 
-    setAnalyzingId(null);
+  const analisar = (videoId: string) => {
+    console.log('📊 Analisar vídeo:', videoId);
+    // aqui você chamará a /api/analyze futuramente
   };
 
-  if (loading) {
-    return <div className="p-8 text-center text-gray-500">Carregando vídeos...</div>;
-  }
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Vídeos por Categoria</h1>
+    <div className="p-4 max-w-5xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">📺 Vídeos por categoria</h1>
 
-      {videos.length === 0 && <p className="text-gray-500">Nenhum vídeo encontrado.</p>}
+      {/* Filtro de categorias */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {categorias.map(cat => (
+          <button
+            key={cat}
+            className={`px-4 py-2 rounded-full border ${
+              categoriaFiltro === cat ? 'bg-blue-600 text-white' : 'bg-white text-black'
+            }`}
+            onClick={() => setCategoriaFiltro(cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
-      {videos.map((video) => (
-        <div key={video._id} className="bg-white border rounded-lg p-4 mb-4 shadow-sm">
-          <div className="flex items-center gap-4">
-            <img src={video.thumbnail} alt={video.title} className="w-32 h-20 object-cover rounded" />
-            <div className="flex-1">
-              <a href={video.url} target="_blank" className="text-lg font-semibold text-blue-600 hover:underline">
-                {video.title}
-              </a>
-              {video.category && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Categoria: <span className="font-medium" style={{ color: video.category.color }}>{video.category.name}</span>
-                </p>
-              )}
-              {video.aiAnalysis?.analyzed && video.aiAnalysis?.summary ? (
-                <p className="text-sm text-gray-700 mt-2 line-clamp-3">
-                  <strong>Resumo:</strong> {video.aiAnalysis.summary}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-500 mt-2">Este vídeo ainda não foi analisado.</p>
-              )}
+      {/* Lista de vídeos */}
+      {carregando && <p>⏳ Carregando vídeos...</p>}
+
+      {!carregando && categoriasFiltradas.map((categoria) => (
+        <div key={categoria.categoriaNome} className="mb-8">
+          <h2 className="text-xl font-semibold mb-3">{categoria.categoriaNome}</h2>
+
+          {categoria.canais.map(canal => (
+            <div key={canal.canalId} className="mb-4">
+              <h3 className="font-medium text-lg mb-2">{canal.canalNome}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {canal.videos.map(video => (
+                  <div key={video.videoId} className="border p-3 rounded shadow">
+                    <img src={video.thumbnail} alt={video.title} className="w-full mb-2 rounded" />
+                    <p className="font-semibold text-sm">{video.title}</p>
+                    <p className="text-xs text-gray-500">{new Date(video.publishedAt).toLocaleString()}</p>
+                    <button
+                      className="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded"
+                      onClick={() => analisar(video.videoId)}
+                    >
+                      📊 Analisar
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="w-48 text-right">
-              <Button
-                onClick={() => analyzeVideo(video._id)}
-                disabled={analyzingId === video._id}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                {analyzingId === video._id ? (
-                  <span className="flex items-center gap-2">
-                    <Loader size={16} className="animate-spin" /> Analisando...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Sparkles size={16} /> Analisar Conteúdo
-                  </span>
-                )}
-              </Button>
-            </div>
-          </div>
+          ))}
         </div>
       ))}
     </div>
