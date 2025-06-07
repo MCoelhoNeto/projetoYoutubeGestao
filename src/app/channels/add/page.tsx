@@ -205,6 +205,7 @@ function AddChannelContent() {
           publishedAt: channelData.publishedAt,
           categoryId: selectedCategory,
         }),
+          credentials: "include" 
       });
 
       const data = await response.json();

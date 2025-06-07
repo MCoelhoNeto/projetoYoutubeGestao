@@ -1,42 +1,29 @@
-import { connectDB } from '@lib/mongodb'
-import Channel from "@models/Channel";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@auth/[...nextauth]/authOption";
-import { NextResponse } from "next/server";
+import { connectDB } from '@lib/mongodb';
+import Channel from '@models/Channel';
+import { getToken } from 'next-auth/jwt';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    const token = await getToken({ req });
+
+    console.log('Usuário autenticado:', token?.userId); // ex: 6843ca9d7f9dce99f9fafc02
+
+    if (!token?.userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const body = await req.json();
-
+    const data = await req.json();
     await connectDB();
 
-    // Verificar se já existe canal do usuário com mesmo youtubeChannelId
-    const canalExistente = await Channel.findOne({
-      youtubeChannelId: body.youtubeChannelId,
-      userId: userId,
-    });
-
-    if (canalExistente) {
-      return NextResponse.json(
-        { error: "Canal já cadastrado por este usuário" },
-        { status: 400 }
-      );
-    }
-
     const novoCanal = await Channel.create({
-      ...body,
-      userId,
+      ...data,
+      userId: token.userId
     });
 
     return NextResponse.json({ success: true, channel: novoCanal });
   } catch (err) {
-    console.error("Erro ao salvar canal:", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+    console.error('Erro ao salvar canal:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
