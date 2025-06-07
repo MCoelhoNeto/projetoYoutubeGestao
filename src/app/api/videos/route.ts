@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=5&type=video`);
 
       const { items } = await res.json();
-
+      console.log(items);
       const videos = items.map((item: any) => ({
         videoId: item.id.videoId,
         title: item.snippet.title,
