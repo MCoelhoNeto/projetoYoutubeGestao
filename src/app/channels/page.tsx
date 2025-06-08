@@ -151,13 +151,25 @@ export default function ChannelsListPage() {
     }, 1000);
   }, []);
 
+  // Normalize text for search (remove accents and convert to lowercase)
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics/accents
+  };
+
   // Filter channels based on search and category
   const filteredCategories = categories.map(category => ({
     ...category,
     channels: category.channels
       .filter(channel => {
-        const matchesSearch = channel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            channel.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        const normalizedSearch = normalizeText(searchTerm);
+        const normalizedTitle = normalizeText(channel.title);
+        const normalizedDescription = normalizeText(channel.description || '');
+        
+        const matchesSearch = normalizedTitle.includes(normalizedSearch) ||
+                            normalizedDescription.includes(normalizedSearch);
         const matchesCategory = selectedCategory === 'all' || category._id === selectedCategory;
         return matchesSearch && matchesCategory;
       })
@@ -205,6 +217,14 @@ export default function ChannelsListPage() {
       newExpanded.add(categoryId);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const collapseAllCategories = () => {
+    setExpandedCategories(new Set());
+  };
+
+  const expandAllCategories = () => {
+    setExpandedCategories(new Set(categories.map(cat => cat._id)));
   };
 
   const toggleChannelDetails = (channelId: string) => {
@@ -277,6 +297,25 @@ export default function ChannelsListPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="hidden sm:block w-px h-6 bg-gray-300" />
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={expandAllCategories}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4 mr-1" />
+                    Expandir
+                  </button>
+                  <button
+                    onClick={collapseAllCategories}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4 mr-1" />
+                    Retrair
+                  </button>
                 </div>
               </div>
 
@@ -563,7 +602,7 @@ export default function ChannelsListPage() {
                                                   className="inline-flex items-center px-3 py-1 border border-blue-300 text-xs font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
                                                 >
                                                   <Eye className="w-3 h-3 mr-1" />
-                                                  Gerenciar
+                                                  Atualizar
                                                 </button>
                                                 <a
                                                   href={`https://youtube.com/@${channel.customUrl || channel.youtubeChannelId}`}
