@@ -1,9 +1,10 @@
+// src/models/VideoCache.ts
 import mongoose from 'mongoose';
 
 const VideoCacheSchema = new mongoose.Schema({
   userId: mongoose.Schema.Types.ObjectId,
   channelId: String,
-  date: String, // formato: YYYY-MM-DD
+  date: String, // formato YYYY-MM-DD
   videos: [
     {
       videoId: String,

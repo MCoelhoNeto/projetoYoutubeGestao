@@ -17,6 +17,7 @@ interface Canal {
   canalId: string;
   canalNome: string;
   videos: Video[];
+  fromCache?: boolean;
 }
 
 interface Categoria {
@@ -34,20 +35,31 @@ export default function VideosPage() {
     setCarregando(true);
     try {
       const res = await fetch('/api/videos');
-      const json = await res.json();
+      let json;
+      try {
+        json = await res.json();
+      } catch (err) {
+        toast.error('Erro ao decodificar JSON da resposta');
+        console.error('❌ Erro ao fazer parse do JSON:', err);
+        return;
+      }
 
-      if (!Array.isArray(json)) {
-        toast.error(json?.error || 'Erro ao buscar vídeos da API');
-        console.error('❌ Resposta inválida da API:', json);
+      if (!json || typeof json !== 'object' || !Array.isArray(json)) {
+        const erro = json?.error || 'Erro ao buscar vídeos da API';
+        toast.error(erro);
+
+        const conteudo = Object.keys(json || {}).length > 0
+          ? JSON.stringify(json, null, 2)
+          : 'Resposta da API está vazia ou malformada.';
 
         toast.message('Resposta da API:', {
           description: (
-            <pre className="text-xs overflow-auto max-h-60">
-              {JSON.stringify(json, null, 2)}
-            </pre>
+            <pre className="text-xs max-h-60 overflow-auto">{conteudo}</pre>
           ),
           duration: 10000
         });
+
+       // console.error('❌ Resposta inválida da API:', JSON.stringify(json));
         return;
       }
 
@@ -62,10 +74,16 @@ export default function VideosPage() {
   };
 
   const atualizarCache = async () => {
-    const res = await fetch('/api/videos/refresh', { method: 'DELETE' });
-    const json = await res.json();
-    toast.success(json.message || 'Cache limpo');
-    buscarVideos();
+    try {
+      const res = await fetch('/api/videos/refresh', { method: 'DELETE' });
+      const json = await res.json();
+      toast.success(json.message || 'Cache limpo');
+      await new Promise((r) => setTimeout(r, 500));
+      await buscarVideos();
+    } catch (err) {
+      toast.error('Erro ao limpar cache');
+      console.error('Erro no atualizarCache:', err);
+    }
   };
 
   useEffect(() => {
@@ -95,7 +113,12 @@ export default function VideosPage() {
           <h2 className="text-xl font-semibold mt-6 mb-2">{categoria.categoriaNome}</h2>
           {categoria.canais.map((canal) => (
             <div key={canal.canalId} className="mb-4">
-              <h3 className="font-medium text-gray-700 mb-2">{canal.canalNome}</h3>
+              <h3 className="font-medium text-gray-700 mb-1">
+                {canal.canalNome}
+                {canal.fromCache && (
+                  <span className="ml-2 text-xs text-green-600">(cache)</span>
+                )}
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {canal.videos.map((video) => (
                   <a
