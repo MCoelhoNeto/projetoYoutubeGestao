@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@hooks/useAuth';
-import AuthGuard from '@components/auth/AuthGuard';
+import React from "react";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@hooks/useAuth";
+import AuthGuard from "@components/auth/AuthGuard";
 import {
   Youtube,
   LogOut,
@@ -13,9 +13,9 @@ import {
   Settings,
   Crown,
   FolderOpen,
-  TrendingUp
-} from 'lucide-react';
-import { useSession } from 'next-auth/react';
+  TrendingUp,
+} from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function DashboardPage() {
   return (
@@ -32,21 +32,21 @@ function DashboardContent() {
     getRemainingChannels,
     getRemainingCategories,
     getRemainingAnalyses,
-    usagePercentage
+    usagePercentage,
   } = useAuth();
 
   const router = useRouter();
   const { data: session, status } = useSession();
 
   const handleSignOut = async () => {
-    console.log('👋 Fazendo logout...');
-    await signOut({ callbackUrl: '/auth/signin' });
+    console.log("👋 Fazendo logout...");
+    await signOut({ callbackUrl: "/auth/signin" });
   };
 
-  if (!user || status === 'loading') return <p>Carregando...</p>;
+  if (!user || status === "loading") return <p>Carregando...</p>;
 
-  const fullName = session?.user?.name || user.name || 'Usuário';
-  const firstName = fullName.split(' ')[0] || 'Usuário';
+  const fullName = session?.user?.name || user.name || "Usuário";
+  const firstName = fullName.split(" ")[0] || "Usuário";
 
   const plan = user?.plan ?? {};
   const features = plan?.features ?? {};
@@ -62,7 +62,9 @@ function DashboardContent() {
                 <Youtube className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">YouTube Manager</h1>
+                <h1 className="text-xl font-bold text-gray-900">
+                  YouTube Manager
+                </h1>
                 <p className="text-xs text-gray-500">Powered by AI</p>
               </div>
             </div>
@@ -74,9 +76,15 @@ function DashboardContent() {
               </div>
 
               <div className="flex items-center gap-3">
-                <img src={user.image} alt={user.name} className="w-8 h-8 rounded-full" />
+                <img
+                  src={user.image}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full"
+                />
                 <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.name}
+                  </p>
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
               </div>
@@ -142,15 +150,15 @@ function DashboardContent() {
 
 function InfoCard({ icon, title, count, remaining, usage, color }: any) {
   const bgColor = {
-    red: 'bg-red-100',
-    blue: 'bg-blue-100',
-    green: 'bg-green-100'
+    red: "bg-red-100",
+    blue: "bg-blue-100",
+    green: "bg-green-100",
   }[color];
 
   const barColor = {
-    red: 'bg-red-600',
-    blue: 'bg-blue-600',
-    green: 'bg-green-600'
+    red: "bg-red-600",
+    blue: "bg-blue-600",
+    green: "bg-green-600",
   }[color];
 
   return (
@@ -174,33 +182,40 @@ function InfoCard({ icon, title, count, remaining, usage, color }: any) {
 function ActionGrid({ router }: any) {
   const actions = [
     {
-      title: 'Adicionar Canal',
-      description: 'Conecte um novo canal do YouTube',
+      title: "Adicionar Canal",
+      description: "Conecte um novo canal do YouTube",
       icon: <Plus size={20} />,
-      color: 'bg-red-600 hover:bg-red-700',
-      onClick: () => router.push('/channels/add')
+      color: "bg-red-600 hover:bg-red-700",
+      onClick: () => router.push("/channels/add"),
     },
     {
-      title: 'Ver Vídeos',
-      description: 'Navegue pelos vídeos dos canais',
+      title: "Ver Vídeos",
+      description: "Navegue pelos vídeos dos canais",
       icon: <Youtube size={20} />,
-      color: 'bg-blue-600 hover:bg-blue-700',
-      onClick: () => router.push('/videos')
+      color: "bg-blue-600 hover:bg-blue-700",
+      onClick: () => router.push("/videos"),
     },
     {
-      title: 'Análises',
-      description: 'Veja análises de IA anteriores',
+      title: "Análises",
+      description: "Veja análises de IA anteriores",
       icon: <TrendingUp size={20} />,
-      color: 'bg-green-600 hover:bg-green-700',
-      onClick: () => router.push('/analyses')
+      color: "bg-green-600 hover:bg-green-700",
+      onClick: () => router.push("/analyses"),
     },
     {
-      title: 'Configurações',
-      description: 'Gerencie sua conta e preferências',
+      title: "Configurações",
+      description: "Gerencie sua conta e preferências",
       icon: <Settings size={20} />,
-      color: 'bg-gray-600 hover:bg-gray-700',
-      onClick: () => router.push('/settings')
-    }
+      color: "bg-gray-600 hover:bg-gray-700",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      title: "Categorias",
+      description: "Gerencie suas categorias de conteúdo",
+      icon: <FolderOpen size={20} />,
+      color: "bg-indigo-600 hover:bg-indigo-700",
+      onClick: () => router.push("/categories"),
+    },
   ];
 
   return (
@@ -226,7 +241,9 @@ function AccountInfo({ user, plan, features }: any) {
       <h3 className="font-medium text-gray-900 mb-4">Informações da Conta</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Dados Pessoais</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Dados Pessoais
+          </h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Nome:</span>
@@ -244,19 +261,27 @@ function AccountInfo({ user, plan, features }: any) {
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Plano Atual</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Plano Atual
+          </h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Tipo:</span>
-              <span className="text-gray-900 capitalize">{plan?.type ?? 'free'}</span>
+              <span className="text-gray-900 capitalize">
+                {plan?.type ?? "free"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Max Canais:</span>
-              <span className="text-gray-900">{features?.maxChannels ?? 'N/A'}</span>
+              <span className="text-gray-900">
+                {features?.maxChannels ?? "N/A"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Max Análises/mês:</span>
-              <span className="text-gray-900">{features?.maxAnalysesPerMonth ?? 'N/A'}</span>
+              <span className="text-gray-900">
+                {features?.maxAnalysesPerMonth ?? "N/A"}
+              </span>
             </div>
           </div>
         </div>
