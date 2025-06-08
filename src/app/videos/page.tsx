@@ -101,6 +101,14 @@ export default function VideosPage() {
         </div>
         <Button onClick={atualizarCache}>🔄 Atualizar Cache</Button>
       </div>
+      <details className="mt-6">
+        <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+          Ver dados brutos (debug)
+        </summary>
+        <pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto">
+          {JSON.stringify({ categoriasFiltradas }, null, 2)}
+        </pre>
+      </details>
 
       {carregando && <p>Carregando vídeos...</p>}
 
