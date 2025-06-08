@@ -57,6 +57,7 @@ const channels = await Channel.find({ categoryId: category._id });
           _id: ch._id.toString(),
           youtubeChannelId: ch.youtubeChannelId,
           title: ch.title,
+          customUrl: ch.customUrl,
           subscribers: ch.subscribers || "",
           videos: ch.videos || 0,
           cacheStatus: ch.cacheStatus || "",
