@@ -9,31 +9,44 @@ import { toast } from "sonner";
 import DashboardLayout from "@components/layouts/DashboardLayout";
 import {
   ArrowLeft,
-  FolderPlus,
   Tag,
   FileText,
   Palette,
   Save,
   X,
-  CheckCircle,
-  AlertTriangle,
   Loader,
   Info,
-  Lightbulb,
   Youtube,
   Users,
   MoreVertical,
   Trash2,
-  ArrowRight,
+  Move,
   ExternalLink,
   Clock,
-  RefreshCw,
-  AlertCircle,
+  CheckCircle,
+  AlertTriangle,
   Archive,
-  Move,
-  Hash,
+  Lightbulb,
+  AlertCircle,
 } from "lucide-react";
 
+// ✅ Adicionado: constante de cores pré-definidas para evitar erro "predefinedColors is not defined"
+const predefinedColors = [
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#F97316",
+  "#06B6D4",
+  "#84CC16",
+  "#EC4899",
+  "#6B7280",
+  "#059669",
+  "#DC2626",
+];
+
+// Tipagens simplificadas para os dados de canais e categorias
 interface Channel {
   _id: string;
   youtubeChannelId: string;
@@ -59,8 +72,8 @@ interface Category {
 }
 
 export default function EditCategoryPage() {
-  const params = useParams();
   const router = useRouter();
+  const params = useParams();
   const categoryId = params.id as string;
 
   const [name, setName] = useState("");
@@ -77,30 +90,28 @@ export default function EditCategoryPage() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [targetCategoryId, setTargetCategoryId] = useState("");
 
-  const predefinedColors = [
-    "#3B82F6",
-    "#10B981",
-    "#F59E0B",
-    "#EF4444",
-    "#8B5CF6",
-    "#F97316",
-    "#06B6D4",
-    "#84CC16",
-    "#EC4899",
-    "#6B7280",
-    "#059669",
-    "#DC2626",
-  ];
+  // ✅ Adicionado: ícones de status de cache dos canais
+  const getCacheStatusIcon = (status?: string) => {
+    switch (status) {
+      case "fresh":
+        return <CheckCircle className="text-green-500" size={16} />;
+      case "stale":
+        return <Clock className="text-yellow-500" size={16} />;
+      case "empty":
+      default:
+        return <AlertTriangle className="text-gray-400" size={16} />;
+    }
+  };
 
+  // ✅ Carregamento inicial da categoria e canais relacionados
   useEffect(() => {
     const loadData = async () => {
       setInitialLoading(true);
       try {
-        const [categoryData, categoriesData] = await Promise.all([
+        const [categoryData, allCats] = await Promise.all([
           CategoryService.getById(categoryId),
           CategoryService.list(),
         ]);
-
         setCategory(categoryData);
         setName(categoryData.name);
         setDescription(categoryData.description || "");
@@ -108,43 +119,73 @@ export default function EditCategoryPage() {
         setTags(categoryData.tags || "");
         setIcon(categoryData.icon || "");
         setChannels(categoryData.channels || []);
-        setAllCategories(
-          categoriesData.filter((cat) => cat._id !== categoryId)
-        );
-      } catch (error: any) {
-        toast.error(error.message || "Erro ao carregar categoria");
+        setAllCategories(allCats.filter((c) => c._id !== categoryId));
+      } catch (err: any) {
+        toast.error("Erro ao carregar categoria");
         router.push("/categories");
       } finally {
         setInitialLoading(false);
       }
     };
-
-    if (categoryId) loadData();
+    loadData();
   }, [categoryId, router]);
 
+  // ✅ Atualizar categoria existente
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Nome da categoria é obrigatório");
-      return;
-    }
-
+    if (!name.trim()) return toast.error("Nome obrigatório");
     setLoading(true);
     try {
       await CategoryService.update(categoryId, {
-        name: name.trim(),
-        description: description.trim(),
+        name,
+        description,
         color,
-        tags: tags.trim(),
-        icon: icon.trim(),
+        tags,
+        icon,
       });
-      toast.success("Categoria atualizada com sucesso!");
+      toast.success("Categoria atualizada");
       router.push("/categories");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao atualizar categoria");
-      console.error(error);
+    } catch (err: any) {
+      toast.error("Erro ao atualizar categoria");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Nova funcionalidade: Remover canal via API
+  const handleRemoveChannel = async (channelId: string) => {
+    if (!confirm("Remover canal da categoria?")) return;
+    try {
+      const res = await fetch(`/api/channels/${channelId}/uncategorize`, {
+        method: "PATCH",
+      });
+      if (!res.ok) throw new Error();
+      setChannels((prev) => prev.filter((ch) => ch._id !== channelId));
+      toast.success("Canal removido");
+    } catch {
+      toast.error("Erro ao remover canal");
+    }
+  };
+
+  // ✅ Nova funcionalidade: Transferir canal para outra categoria via API
+  const handleTransferChannel = async () => {
+    if (!selectedChannel || !targetCategoryId) return;
+    try {
+      const res = await fetch(`/api/channels/${selectedChannel._id}/transfer`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newCategoryId: targetCategoryId }),
+      });
+      if (!res.ok) throw new Error();
+      setChannels((prev) =>
+        prev.filter((ch) => ch._id !== selectedChannel._id)
+      );
+      setShowTransferModal(false);
+      setSelectedChannel(null);
+      setTargetCategoryId("");
+      toast.success("Canal transferido");
+    } catch {
+      toast.error("Erro ao transferir canal");
     }
   };
 
@@ -160,46 +201,6 @@ export default function EditCategoryPage() {
       }
     } else {
       router.push("/categories");
-    }
-  };
-
-  const handleRemoveChannel = async (channelId: string) => {
-    if (confirm("Tem certeza que deseja remover este canal da categoria?")) {
-      try {
-        // Simular remoção - você implementará a API real
-        setChannels(channels.filter((ch) => ch._id !== channelId));
-        toast.success("Canal removido da categoria");
-      } catch (error) {
-        toast.error("Erro ao remover canal");
-      }
-    }
-  };
-
-  const handleTransferChannel = async () => {
-    if (!selectedChannel || !targetCategoryId) return;
-
-    try {
-      // Simular transferência - você implementará a API real
-      setChannels(channels.filter((ch) => ch._id !== selectedChannel._id));
-      setShowTransferModal(false);
-      setSelectedChannel(null);
-      setTargetCategoryId("");
-      toast.success("Canal transferido com sucesso");
-    } catch (error) {
-      toast.error("Erro ao transferir canal");
-    }
-  };
-
-  const getCacheStatusIcon = (status?: string) => {
-    switch (status) {
-      case "fresh":
-        return <CheckCircle className="text-green-500" size={16} />;
-      case "stale":
-        return <Clock className="text-yellow-500" size={16} />;
-      case "empty":
-        return <AlertTriangle className="text-gray-400" size={16} />;
-      default:
-        return <AlertTriangle className="text-gray-400" size={16} />;
     }
   };
 
