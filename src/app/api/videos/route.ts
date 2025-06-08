@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         console.log(`✅ Usando cache para canal: ${canal.title}`);
         videos = cache.videos;
       } else {
-        const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=5&type=video`;
+        const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=4&type=video`;
         console.log(`🌐 Fazendo requisição para YouTube: ${url}`);
 
         const res = await fetch(url);
@@ -92,9 +92,10 @@ export async function GET(req: NextRequest) {
 
       categoriasMap.get(categoriaId)!.canais.push({
         canalId: canal._id,
+        customUrl:canal.customUrl,
         canalNome: canal.title,
         videos,
-        fromCache: !!cache
+        fromCache: !!cache,
       });
     }
 

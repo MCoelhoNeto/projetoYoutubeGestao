@@ -36,6 +36,7 @@ interface Canal {
   canalNome: string;
   videos: Video[];
   fromCache?: boolean;
+  customUrl:string;
 }
 
 interface Categoria {
@@ -313,9 +314,16 @@ export default function VideosPage() {
                           <Youtube className="w-5 h-5 text-white" />
                         </div>
                         <div>
+                           <a
+                              href={`https://www.youtube.com/${canal.customUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+
                           <h3 className="font-medium text-gray-900">
                             {canal.canalNome}
                           </h3>
+                            </a>
                           <div className="flex items-center space-x-2 text-sm text-gray-500">
                             <span>{canal.videos.length} vídeos</span>
                             {canal.fromCache && (
