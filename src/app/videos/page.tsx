@@ -1,34 +1,34 @@
 // /app/videos/page.tsx
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import Button from '@components/ui/button';
-import DashboardLayout from '@components/layouts/DashboardLayout';
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Grid3X3, 
-  List, 
-  Send, 
-  Play, 
-  CheckCircle, 
-  Clock, 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import Button from "@components/ui/button";
+import DashboardLayout from "@components/layouts/DashboardLayout";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Grid3X3,
+  List,
+  Send,
+  Play,
+  CheckCircle,
+  Clock,
   Filter,
   Youtube,
   Calendar,
   Eye,
   ExternalLink,
-  Archive
-} from 'lucide-react';
+  Archive,
+} from "lucide-react";
 
 interface Video {
   videoId: string;
   title: string;
   publishedAt: string;
   thumbnail: string;
-  status?: 'pendente' | 'analisado';
+  status?: "pendente" | "analisado";
 }
 
 interface Canal {
@@ -45,9 +45,11 @@ interface Categoria {
 
 export default function VideosPage() {
   const [dados, setDados] = useState<Categoria[]>([]);
-  const [categoriasFiltradas, setCategoriasFiltradas] = useState<Categoria[]>([]);
+  const [categoriasFiltradas, setCategoriasFiltradas] = useState<Categoria[]>(
+    []
+  );
   const [carregando, setCarregando] = useState(true);
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState('todas');
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState("todas");
   const [modoLista, setModoLista] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const router = useRouter();
@@ -55,11 +57,11 @@ export default function VideosPage() {
   const buscarVideos = async () => {
     setCarregando(true);
     try {
-      const res = await fetch('/api/videos');
+      const res = await fetch("/api/videos");
       const json = await res.json();
 
       if (!Array.isArray(json)) {
-        toast.error(json?.error || 'Erro ao buscar vídeos da API');
+        toast.error(json?.error || "Erro ao buscar vídeos da API");
         return;
       }
 
@@ -69,15 +71,15 @@ export default function VideosPage() {
           ...canal,
           videos: canal.videos.map((v) => ({
             ...v,
-            status: 'pendente',
-          }))
-        }))
+            status: "pendente",
+          })),
+        })),
       }));
 
       setDados(dadosComStatus);
       setCategoriasFiltradas(dadosComStatus);
     } catch (err) {
-      toast.error('Erro inesperado ao carregar vídeos');
+      toast.error("Erro inesperado ao carregar vídeos");
       console.error(err);
     } finally {
       setCarregando(false);
@@ -86,46 +88,50 @@ export default function VideosPage() {
 
   const atualizarCache = async () => {
     try {
-      const res = await fetch('/api/videos/refresh', { method: 'DELETE' });
+      const res = await fetch("/api/videos/refresh", { method: "DELETE" });
       const json = await res.json();
-      toast.success(json.message || 'Cache limpo');
+      toast.success(json.message || "Cache limpo");
       await new Promise((r) => setTimeout(r, 500));
       await buscarVideos();
     } catch (err) {
-      toast.error('Erro ao limpar cache');
+      toast.error("Erro ao limpar cache");
     }
   };
 
   const aplicarFiltro = (nome: string) => {
     setCategoriaSelecionada(nome);
-    if (nome === 'todas') {
+    if (nome === "todas") {
       setCategoriasFiltradas(dados);
     } else {
-      setCategoriasFiltradas(dados.filter(c => c.categoriaNome === nome));
+      setCategoriasFiltradas(dados.filter((c) => c.categoriaNome === nome));
     }
   };
 
   const enviarParaAnalise = async (video: Video) => {
-    const res = await fetch('/api/analises', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/analises", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(video),
     });
     const json = await res.json();
     toast.success(`Vídeo enviado: ${video.title}`);
-    setDados(prev => prev.map(cat => ({
-      ...cat,
-      canais: cat.canais.map(can => ({
-        ...can,
-        videos: can.videos.map(v => v.videoId === video.videoId ? { ...v, status: 'analisado' } : v)
+    setDados((prev) =>
+      prev.map((cat) => ({
+        ...cat,
+        canais: cat.canais.map((can) => ({
+          ...can,
+          videos: can.videos.map((v) =>
+            v.videoId === video.videoId ? { ...v, status: "analisado" } : v
+          ),
+        })),
       }))
-    })));
+    );
   };
 
   const enviarSelecionados = async () => {
-    const todos = dados.flatMap(cat =>
-      cat.canais.flatMap(can =>
-        can.videos.filter(v => selecionados.includes(v.videoId))
+    const todos = dados.flatMap((cat) =>
+      cat.canais.flatMap((can) =>
+        can.videos.filter((v) => selecionados.includes(v.videoId))
       )
     );
 
@@ -138,7 +144,7 @@ export default function VideosPage() {
   const toggleSelecionado = (videoId: string) => {
     setSelecionados((prev) => {
       if (prev.includes(videoId)) {
-        return prev.filter(v => v !== videoId);
+        return prev.filter((v) => v !== videoId);
       } else {
         return [...prev, videoId];
       }
@@ -149,9 +155,22 @@ export default function VideosPage() {
     buscarVideos();
   }, []);
 
-  const categoriasUnicas = ['todas', ...dados.map(c => c.categoriaNome)];
-  const totalVideos = dados.reduce((acc, cat) => acc + cat.canais.reduce((acc2, canal) => acc2 + canal.videos.length, 0), 0);
-  const videosAnalisados = dados.reduce((acc, cat) => acc + cat.canais.reduce((acc2, canal) => acc2 + canal.videos.filter(v => v.status === 'analisado').length, 0), 0);
+  const categoriasUnicas = ["todas", ...dados.map((c) => c.categoriaNome)];
+  const totalVideos = dados.reduce(
+    (acc, cat) =>
+      acc + cat.canais.reduce((acc2, canal) => acc2 + canal.videos.length, 0),
+    0
+  );
+  const videosAnalisados = dados.reduce(
+    (acc, cat) =>
+      acc +
+      cat.canais.reduce(
+        (acc2, canal) =>
+          acc2 + canal.videos.filter((v) => v.status === "analisado").length,
+        0
+      ),
+    0
+  );
 
   return (
     <DashboardLayout>
@@ -161,8 +180,8 @@ export default function VideosPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
-                <button 
-                  onClick={() => router.back()} 
+                <button
+                  onClick={() => router.back()}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -174,8 +193,12 @@ export default function VideosPage() {
                     <Youtube className="w-6 h-6 text-red-600" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900">Últimos Vídeos</h1>
-                    <p className="text-sm text-gray-500">{totalVideos} vídeos • {videosAnalisados} analisados</p>
+                    <h1 className="text-xl font-bold text-gray-900">
+                      Últimos Vídeos
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      {totalVideos} vídeos • {videosAnalisados} analisados
+                    </p>
                   </div>
                 </div>
               </div>
@@ -197,22 +220,30 @@ export default function VideosPage() {
                   >
                     {categoriasUnicas.map((nome) => (
                       <option key={nome} value={nome}>
-                        {nome === 'todas' ? 'Todas as categorias' : nome}
+                        {nome === "todas" ? "Todas as categorias" : nome}
                       </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="flex items-center border border-gray-300 rounded-lg">
                   <button
                     onClick={() => setModoLista(false)}
-                    className={`p-2 rounded-l-lg transition-colors ${!modoLista ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                    className={`p-2 rounded-l-lg transition-colors ${
+                      !modoLista
+                        ? "bg-blue-100 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
                   >
                     <Grid3X3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setModoLista(true)}
-                    className={`p-2 rounded-r-lg transition-colors ${modoLista ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
+                    className={`p-2 rounded-r-lg transition-colors ${
+                      modoLista
+                        ? "bg-blue-100 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
                   >
                     <List className="w-4 h-4" />
                   </button>
@@ -228,7 +259,7 @@ export default function VideosPage() {
                   <Send className="w-4 h-4 mr-2" />
                   Analisar Selecionados ({selecionados.length})
                 </button>
-                
+
                 <button
                   onClick={atualizarCache}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
@@ -255,173 +286,220 @@ export default function VideosPage() {
           {!carregando && categoriasFiltradas.length === 0 && (
             <div className="text-center py-12">
               <Archive className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum vídeo encontrado</h3>
-              <p className="text-gray-500">Tente selecionar uma categoria diferente ou atualize o cache.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhum vídeo encontrado
+              </h3>
+              <p className="text-gray-500">
+                Tente selecionar uma categoria diferente ou atualize o cache.
+              </p>
             </div>
           )}
 
-          {!carregando && categoriasFiltradas.map((categoria) => (
-            <div key={categoria.categoriaNome} className="mb-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">{categoria.categoriaNome}</h2>
-                <div className="w-12 h-1 bg-blue-600 rounded-full"></div>
-              </div>
-              
-              {categoria.canais.map((canal) => (
-                <div key={canal.canalId} className="mb-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
-                        <Youtube className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{canal.canalNome}</h3>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <span>{canal.videos.length} vídeos</span>
-                          {canal.fromCache && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Cache
-                            </span>
-                          )}
+          {!carregando &&
+            categoriasFiltradas.map((categoria) => (
+              <div key={categoria.categoriaNome} className="mb-8">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                    {categoria.categoriaNome}
+                  </h2>
+                  <div className="w-12 h-1 bg-blue-600 rounded-full"></div>
+                </div>
+
+                {categoria.canais.map((canal) => (
+                  <div key={canal.canalId} className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                          <Youtube className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {canal.canalNome}
+                          </h3>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span>{canal.videos.length} vídeos</span>
+                            {canal.fromCache && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Cache
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className={`${
-                    modoLista 
-                      ? 'space-y-3' 
-                      : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  }`}>
-                    {canal.videos.map((video) => (
-                      <div
-                        key={video.videoId}
-                        className={`bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 ${
-                          selecionados.includes(video.videoId) ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
-                        } ${modoLista ? 'flex items-center p-4' : 'group'}`}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className="flex-shrink-0 pt-1">
-                            <input
-                              type="checkbox"
-                              checked={selecionados.includes(video.videoId)}
-                              onChange={() => toggleSelecionado(video.videoId)}
-                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                          </div>
-                          
-                          {modoLista ? (
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    {video.status === 'analisado' ? (
-                                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                    ) : (
-                                      <Clock className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                                    )}
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">{video.title}</h4>
-                                  </div>
-                                  <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                    <div className="flex items-center space-x-1">
-                                      <Calendar className="w-3 h-3" />
-                                      <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
+                    <div
+                      className={`${
+                        modoLista
+                          ? "space-y-3"
+                          : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                      }`}
+                    >
+                      {canal.videos.map((video) => (
+                        <div
+                          key={video.videoId}
+                          className={`bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 ${
+                            selecionados.includes(video.videoId)
+                              ? "ring-2 ring-blue-500 ring-opacity-50"
+                              : ""
+                          } ${
+                            modoLista ? "flex items-center p-4" : "group p-4"
+                          }`}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0 pt-1">
+                              <input
+                                type="checkbox"
+                                checked={selecionados.includes(video.videoId)}
+                                onChange={() =>
+                                  toggleSelecionado(video.videoId)
+                                }
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+
+                            {modoLista ? (
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      {video.status === "analisado" ? (
+                                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                      ) : (
+                                        <Clock className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                                      )}
+                                      <h4 className="text-sm font-medium text-gray-900 truncate">
+                                        {video.title}
+                                      </h4>
                                     </div>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      video.status === 'analisado' 
-                                        ? 'bg-green-100 text-green-800' 
-                                        : 'bg-orange-100 text-orange-800'
-                                    }`}>
-                                      {video.status}
-                                    </span>
+                                    <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                      <div className="flex items-center space-x-1">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>
+                                          {new Date(
+                                            video.publishedAt
+                                          ).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                      <span
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                          video.status === "analisado"
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-orange-100 text-orange-800"
+                                        }`}
+                                      >
+                                        {video.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2 flex-shrink-0">
+                                    {video.status === "pendente" && (
+                                      <button
+                                        onClick={() => enviarParaAnalise(video)}
+                                        className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap"
+                                      >
+                                        <Send className="w-3 h-3 mr-1" />
+                                        Analisar
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        window.open(
+                                          `https://www.youtube.com/watch?v=${video.videoId}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
+                                    >
+                                      <ExternalLink className="w-3 h-3 mr-1" />
+                                      Ver
+                                    </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center space-x-2 ml-4">
-                                  {video.status === 'pendente' && (
+                              </div>
+                            ) : (
+                              <div className="flex-1">
+                                <a
+                                  href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <div className="relative mb-3">
+                                    <div className="relative overflow-hidden rounded-lg bg-gray-200">
+                                      <img
+                                        src={`https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`}
+                                        alt={video.title}
+                                        className="w-full h-32 object-cover group-hover:opacity-90 transition-opacity rounded"
+                                        loading="lazy"
+                                      />
+                                     
+                                      <div className="absolute top-2 right-2">
+                                        {video.status === "analisado" ? (
+                                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                                            <CheckCircle className="w-4 h-4 text-white" />
+                                          </div>
+                                        ) : (
+                                          <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                                            <Clock className="w-4 h-4 text-white" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <h4
+                                    className="text-sm font-medium text-gray-900 mb-2 leading-tight"
+                                    style={{
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {video.title}
+                                  </h4>
+                                  <div className="flex items-center space-x-1 text-xs text-gray-500 mb-3">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>
+                                      {new Date(
+                                        video.publishedAt
+                                      ).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </a>
+
+                                <div className="flex items-center justify-between pt-2 gap-2">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                      video.status === "analisado"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-orange-100 text-orange-800"
+                                    }`}
+                                  >
+                                    {video.status}
+                                  </span>
+
+                                  {video.status === "pendente" && (
                                     <button
                                       onClick={() => enviarParaAnalise(video)}
-                                      className="inline-flex items-center px-3 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
+                                      className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap flex-shrink-0"
                                     >
                                       <Send className="w-3 h-3 mr-1" />
                                       Analisar
                                     </button>
                                   )}
-                                  <button
-                                    onClick={() => window.open(`https://www.youtube.com/watch?v=${video.videoId}`, '_blank')}
-                                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                  >
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    Ver
-                                  </button>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex-1">
-                              <a
-                                href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                              >
-                                <div className="relative">
-                                  <img 
-                                    src={video.thumbnail} 
-                                    alt={video.title} 
-                                    className="w-full h-32 object-cover rounded-lg mb-3 group-hover:opacity-90 transition-opacity" 
-                                  />
-                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                                    <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </div>
-                                  <div className="absolute top-2 right-2">
-                                    {video.status === 'analisado' ? (
-                                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                        <CheckCircle className="w-4 h-4 text-white" />
-                                      </div>
-                                    ) : (
-                                      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                                        <Clock className="w-4 h-4 text-white" />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">{video.title}</h4>
-                                <div className="flex items-center space-x-1 text-xs text-gray-500 mb-3">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
-                                </div>
-                              </a>
-                              
-                              <div className="flex items-center justify-between">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  video.status === 'analisado' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-orange-100 text-orange-800'
-                                }`}>
-                                  {video.status}
-                                </span>
-                                
-                                {video.status === 'pendente' && (
-                                  <button
-                                    onClick={() => enviarParaAnalise(video)}
-                                    className="inline-flex items-center px-3 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
-                                  >
-                                    <Send className="w-3 h-3 mr-1" />
-                                    Analisar
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ))}
+                ))}
+              </div>
+            ))}
         </div>
       </div>
     </DashboardLayout>
