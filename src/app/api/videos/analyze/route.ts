@@ -1,135 +1,75 @@
+import { getToken } from 'next-auth/jwt';
+import { connectDB } from '@lib/mongodb';
+import Channel from '@models/Channel';
+import Category from '@models/Category';
+import VideoCache from '@models/VideoCache';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { connectDB } from '@/lib/mongodb';
-import { google } from '@google-ai/generativelanguage';
-import { GoogleAuth } from 'google-auth-library';
-import { ObjectId } from 'mongodb';
+import dayjs from 'dayjs';
 
-export async function POST(request: NextRequest) {
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
+
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const token = await getToken({ req });
+    if (!token?.userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const { videoId } = await request.json();
-    if (!videoId) {
-      return NextResponse.json({ error: 'ID do vídeo é obrigatório' }, { status: 400 });
-    }
+    await connectDB();
+    const canais = await Channel.find({ userId: token.userId }).lean();
 
-    const { db } = await connectDB();
+    const categoriasMap = new Map<string, { categoriaNome: string; canais: any[] }>();
+    const today = dayjs().format('YYYY-MM-DD');
 
-    // Buscar usuário
-    const user = await db.collection('users').findOne({ email: session.user.email });
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
+    for (const canal of canais) {
+      const categoriaId = canal.categoryId?.toString() || 'sem-categoria';
 
-    // Verificar limite de análises
-    const max = user.plan?.features?.maxAnalysesPerMonth || 10;
-    const used = user.usage?.analysesThisMonth || 0;
-    if (used >= max) {
-      return NextResponse.json({ error: 'Limite de análises atingido para o mês' }, { status: 403 });
-    }
+      // Tenta carregar cache do dia
+      let cache = await VideoCache.findOne({
+        userId: token.userId,
+        channelId: canal.youtubeChannelId,
+        date: today
+      }).lean();
 
-    // Buscar vídeo
-    const video = await db.collection('channel_videos').findOne({
-      _id: new ObjectId(videoId),
-      userId: user._id
-    });
+      let videos;
 
-    if (!video) {
-      return NextResponse.json({ error: 'Vídeo não encontrado' }, { status: 404 });
-    }
+      if (!cache) {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=5&type=video`);
+        const { items } = await res.json();
 
-    if (!video.transcript?.text) {
-      return NextResponse.json({ error: 'Transcrição do vídeo não disponível' }, { status: 400 });
-    }
+        videos = items?.map((item: any) => ({
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          publishedAt: item.snippet.publishedAt,
+          thumbnail: item.snippet.thumbnails.medium.url
+        })) || [];
 
-    const prompt = `
-Você é um especialista em conteúdo educacional. Leia a seguinte transcrição de vídeo e:
-
-1. Gere um resumo em **dois parágrafos**.
-2. Gere uma lista de tópicos importantes.
-3. Dê sua opinião crítica (positiva ou negativa) sobre a abordagem, com nível de confiança.
-
-TRANSCRIÇÃO:
-${video.transcript.text}
-`;
-
-    // Autenticar com a API do Gemini
-    const auth = new GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/cloud-platform']
-    });
-
-    const client = new google.GenerativeLanguageServiceClient({
-      authClient: await auth.getClient()
-    });
-
-    const model = 'models/gemini-1.5-pro';
-
-    const [result] = await client.generateContent({
-      model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
-
-    const output = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    const summaryMatch = output.match(/Resumo:(.+?)\n\n/s);
-    const topicsMatch = output.match(/Tópicos:(.+?)\n\n/s);
-    const opinionMatch = output.match(/Opinião:(.+)/s);
-
-    const analysis = {
-      summary: summaryMatch?.[1]?.trim() || '',
-      topics: (topicsMatch?.[1] || '')
-        .split('\n')
-        .map(t => t.trim())
-        .filter(Boolean),
-      geminiOpinion: {
-        reasoning: opinionMatch?.[1]?.trim() || '',
-        confidence: 0.85 // pode ser estimado ou ajustado futuramente
-      },
-      analyzedAt: new Date(),
-      modelVersion: model,
-      tokensUsed: video.transcript.wordCount || 0,
-      processingTime: 15
-    };
-
-    const inserted = await db.collection('video_analyses').insertOne({
-      userId: user._id,
-      videoId: video._id,
-      ...analysis
-    });
-
-    await db.collection('channel_videos').updateOne(
-      { _id: video._id },
-      {
-        $set: {
-          aiAnalysis: {
-            analyzed: true,
-            analysisId: inserted.insertedId,
-            summary: analysis.summary,
-            topics: analysis.topics,
-            geminiOpinion: analysis.geminiOpinion,
-            analyzedAt: new Date()
-          }
-        }
+        await VideoCache.create({
+          userId: token.userId,
+          channelId: canal.youtubeChannelId,
+          date: today,
+          videos
+        });
+      } else {
+        videos = cache.videos;
       }
-    );
 
-    // Atualizar contador de uso
-    await db.collection('users').updateOne(
-      { _id: user._id },
-      { $inc: { 'usage.analysesThisMonth': 1 } }
-    );
+      if (!categoriasMap.has(categoriaId)) {
+        const categoria = await Category.findById(canal.categoryId).lean();
+        categoriasMap.set(categoriaId, {
+          categoriaNome: categoria?.name || 'Sem categoria',
+          canais: []
+        });
+      }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Análise concluída com sucesso',
-      analysisId: inserted.insertedId.toString(),
-    });
-  } catch (error) {
-    console.error('❌ Erro ao analisar vídeo:', error);
-    return NextResponse.json({ error: 'Erro ao processar análise' }, { status: 500 });
+      categoriasMap.get(categoriaId)!.canais.push({
+        canalId: canal._id,
+        canalNome: canal.title,
+        videos
+      });
+    }
+
+    return NextResponse.json(Array.from(categoriasMap.values()));
+  } catch (err) {
+    console.error('Erro ao buscar vídeos:', err);
+    return NextResponse.json({ error: 'Erro interno ao buscar vídeos' }, { status: 500 });
   }
 }

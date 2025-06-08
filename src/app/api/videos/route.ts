@@ -14,16 +14,25 @@ export async function GET(req: NextRequest) {
     }
 
     await connectDB();
-
     const canais = await Channel.find({ userId: token.userId }).lean();
-
     const categoriasMap = new Map<string, { categoriaNome: string, canais: any[] }>();
 
     for (const canal of canais) {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=5&type=video`);
+      const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=5&type=video`;
 
-      const { items } = await res.json();
-      console.log(items);
+      const res = await fetch(url);
+      const ytJson = await res.json();
+
+      if (!res.ok) {
+        console.error('❌ Erro da API do YouTube:', JSON.stringify(ytJson, null, 2));
+        return NextResponse.json({
+          error: 'Erro da API do YouTube',
+          erro: ytJson
+        }, { status: res.status });
+      }
+
+      const items = ytJson.items || [];
+
       const videos = items.map((item: any) => ({
         videoId: item.id.videoId,
         title: item.snippet.title,
@@ -49,8 +58,11 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(Array.from(categoriasMap.values()));
-  } catch (err) {
-    console.error('Erro ao buscar vídeos:', err);
-    return NextResponse.json({ error: 'Erro interno ao buscar vídeos' }, { status: 500 });
+  } catch (err: any) {
+    console.error('❌ Erro inesperado:', err);
+    return NextResponse.json({
+      error: 'Erro interno ao buscar vídeos',
+      erro: err?.message || err
+    }, { status: 500 });
   }
 }
