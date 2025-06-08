@@ -3,10 +3,12 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@lib/mongodb';
 import Category from '@models/Category';
 import User from '@models/User';
+import Channel from '@models/Channel'; // 👈 Importante!
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ObjectId } from 'mongodb';
 
-// GET - Listar categorias do usuário
+
+
 export async function GET() {
   try {
     const session = await getServerSession();
@@ -22,23 +24,26 @@ export async function GET() {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    // 🧪 Debug
-    console.log('🔍 user._id:', user._id);
-
     const categories = await Category.find({ userId: user._id }).sort({ createdAt: -1 });
 
-    console.log(`✅ ${categories.length} categorias encontradas`);
+    // 👇 Mapeia todas as categorias com a contagem real de canais
+    const enriched = await Promise.all(
+      categories.map(async (cat) => {
+        const count = await Channel.countDocuments({ categoryId: cat._id });
+        return {
+          _id: cat._id.toString(),
+          name: cat.name,
+          description: cat.description,
+          color: cat.color,
+          channelsCount: count,
+          createdAt: cat.createdAt
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
-      categories: categories.map(cat => ({
-        _id: cat._id.toString(),
-        name: cat.name,
-        description: cat.description,
-        color: cat.color,
-        channelsCount: cat.channelsCount || 0,
-        createdAt: cat.createdAt
-      }))
+      categories: enriched
     });
 
   } catch (error) {
