@@ -3,12 +3,14 @@ import { getServerSession } from "next-auth";
 import { connectDB } from "@lib/mongodb";
 import Category from "@models/Category";
 import User from "@models/User";
+import Channel from "@models/Channel";
 import mongoose from "mongoose";
 
 export async function GET(
-  _: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     const session = await getServerSession();
     if (!session?.user?.email) {
@@ -25,15 +27,19 @@ export async function GET(
     }
 
     const category = await Category.findOne({
-      _id: new mongoose.Types.ObjectId(params.id),
-      userId: user._id,
-    });
-    if (!category) {
-      return NextResponse.json(
-        { error: "Categoria não encontrada" },
-        { status: 404 }
-      );
-    }
+  _id: new mongoose.Types.ObjectId(params.id),
+  userId: user._id,
+});
+
+if (!category) {
+  return NextResponse.json(
+    { error: "Categoria não encontrada" },
+    { status: 404 }
+  );
+}
+
+// Buscar canais relacionados
+const channels = await Channel.find({ categoryId: category._id });
 
     return NextResponse.json({
       success: true,
@@ -47,8 +53,19 @@ export async function GET(
         channelsCount: category.channelsCount,
         createdAt: category.createdAt,
         updatedAt: category.updatedAt,
+        channels: channels.map((ch) => ({
+          _id: ch._id.toString(),
+          youtubeChannelId: ch.youtubeChannelId,
+          title: ch.title,
+          subscribers: ch.subscribers || "",
+          videos: ch.videos || 0,
+          cacheStatus: ch.cacheStatus || "",
+          analysisCount: ch.analysisCount || 0,
+          maxAnalysis: ch.maxAnalysis || 10,
+        })),
       },
     });
+
   } catch (error) {
     console.error("❌ Erro ao obter categoria:", error);
     return NextResponse.json(
@@ -60,8 +77,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
+
   try {
     const session = await getServerSession();
     if (!session?.user?.email) {
@@ -113,7 +132,6 @@ export async function PUT(
         updatedAt: category.updatedAt,
       },
     });
-    
   } catch (error) {
     console.error("❌ Erro ao atualizar categoria:", error);
     return NextResponse.json(
@@ -128,6 +146,7 @@ export async function DELETE(
   context: { params: { id: string } }
 ) {
   const { params } = context;
+
   try {
     const session = await getServerSession();
     if (!session?.user?.email) {
