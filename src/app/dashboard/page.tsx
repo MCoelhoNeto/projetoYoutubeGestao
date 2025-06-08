@@ -95,7 +95,7 @@ function InfoCard({ icon, title, count, remaining, usage, color }: any) {
   }[color];
 
   return (
-    <div className="bg-white rounded-lg border p-6">
+    <div className="bg-white rounded-lg  border border-gray-200  p-6">
       <div className="flex items-center justify-between mb-4">
         <div className={`p-2 ${bgColor} rounded-lg`}>{icon}</div>
         <span className="text-2xl font-bold text-gray-900">{count}</span>
@@ -163,7 +163,7 @@ function ActionGrid({ router }: any) {
 
 function AccountInfo({ user, plan, features }: any) {
   return (
-    <div className="bg-white rounded-lg border p-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
       <h3 className="font-medium text-gray-900 mb-4">Informações da Conta</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
