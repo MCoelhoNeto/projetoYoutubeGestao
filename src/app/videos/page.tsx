@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import  Button  from '@components/ui/button';
+import DashboardLayout from '@components/layouts/DashboardLayout';
 
 interface Video {
   videoId: string;
@@ -91,6 +92,7 @@ export default function VideosPage() {
   }, []);
 
   return (
+    <DashboardLayout>
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -147,5 +149,6 @@ export default function VideosPage() {
         </div>
       ))}
     </div>
+    </DashboardLayout>
   );
 }

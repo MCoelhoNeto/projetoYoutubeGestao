@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@hooks/useAuth";
 import AuthGuard from "@components/auth/AuthGuard";
+import DashboardLayout from '@components/layouts/DashboardLayout';
 import {
   Youtube,
   Search,
@@ -252,6 +253,7 @@ function AddChannelContent() {
   // Se não pode adicionar canais
   if (!canAddChannel()) {
     return (
+   
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-2xl mx-auto px-4">
           <div className="bg-white rounded-lg border p-8 text-center">
@@ -281,10 +283,12 @@ function AddChannelContent() {
           </div>
         </div>
       </div>
+     
     );
   }
 
-  return (
+  return (    
+  <DashboardLayout>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b">
@@ -693,5 +697,6 @@ function AddChannelContent() {
         )}
       </div>
     </div>
+  </DashboardLayout>
   );
 }

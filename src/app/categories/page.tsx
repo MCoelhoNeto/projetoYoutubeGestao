@@ -21,6 +21,7 @@ import {
   Calendar,
   Hash,
 } from "lucide-react";
+import DashboardLayout from '@components/layouts/DashboardLayout';
 
 export default function CategoryListPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -45,12 +46,13 @@ export default function CategoryListPage() {
   };
 
   return (
-    <div className="p-6">
+    <DashboardLayout>
+    <div className="">
 
         {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
+        <div className="max-w-4xl  px-4 ">
+          <div className="flex  gap-4">
             <button
               onClick={() => router.push("/dashboard")}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -66,8 +68,8 @@ export default function CategoryListPage() {
           </div>
         </div>
       </div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Categorias</h1>
+      <div className="flex justify-end mt-2 items-center mb-4">
+        
         <Button onClick={() => router.push('/categories/new')}>Nova Categoria</Button>
       </div>
 
@@ -97,5 +99,6 @@ export default function CategoryListPage() {
         </table>
       </div>
     </div>
+    </DashboardLayout>
   );
 }
