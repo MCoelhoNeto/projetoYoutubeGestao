@@ -8,29 +8,10 @@ import { CategoryService } from '@lib/services/categoryService';
 import { toast } from 'sonner';
 import DashboardLayout from '@components/layouts/DashboardLayout';
 import {
-  ArrowLeft,
-  FolderPlus,
-  Tag,
-  FileText,
-  Palette,
-  Save,
-  X,
-  CheckCircle,
-  AlertTriangle,
-  Loader,
-  Info,
-  Lightbulb,
-  Youtube,
-  Users,
-  MoreVertical,
-  Trash2,
-  ArrowRight,
-  ExternalLink,
-  Clock,
-  RefreshCw,
-  AlertCircle,
-  Archive,
-  Move
+  ArrowLeft, FolderPlus, Tag, FileText, Palette, Save, X, CheckCircle,
+  AlertTriangle, Loader, Info, Lightbulb, Youtube, Users, MoreVertical,
+  Trash2, ArrowRight, ExternalLink, Clock, RefreshCw, AlertCircle, Archive,
+  Move, Hash
 } from 'lucide-react';
 
 interface Channel {
@@ -49,6 +30,8 @@ interface Category {
   name: string;
   description?: string;
   color?: string;
+  tags?: string;
+  icon?: string;
   channels?: Channel[];
   createdAt?: string;
   updatedAt?: string;
@@ -59,19 +42,16 @@ export default function EditCategoryPage() {
   const router = useRouter();
   const categoryId = params.id as string;
 
-  // Form states
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#3B82F6');
+  const [tags, setTags] = useState('');
+  const [icon, setIcon] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  
-  // Category and channels
   const [category, setCategory] = useState<Category | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  
-  // UI states
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [targetCategoryId, setTargetCategoryId] = useState('');
@@ -81,7 +61,6 @@ export default function EditCategoryPage() {
     '#06B6D4', '#84CC16', '#EC4899', '#6B7280', '#059669', '#DC2626'
   ];
 
-  // Load category data
   useEffect(() => {
     const loadData = async () => {
       setInitialLoading(true);
@@ -90,29 +69,28 @@ export default function EditCategoryPage() {
           CategoryService.getById(categoryId),
           CategoryService.list()
         ]);
-        
+
         setCategory(categoryData);
         setName(categoryData.name);
         setDescription(categoryData.description || '');
         setColor(categoryData.color || '#3B82F6');
+        setTags(categoryData.tags || '');
+        setIcon(categoryData.icon || '');
         setChannels(categoryData.channels || []);
         setAllCategories(categoriesData.filter(cat => cat._id !== categoryId));
-      } catch (error) {
-        toast.error('Erro ao carregar categoria');
+      } catch (error: any) {
+        toast.error(error.message || 'Erro ao carregar categoria');
         router.push('/categories');
       } finally {
         setInitialLoading(false);
       }
     };
 
-    if (categoryId) {
-      loadData();
-    }
+    if (categoryId) loadData();
   }, [categoryId, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!name.trim()) {
       toast.error('Nome da categoria é obrigatório');
       return;
@@ -120,15 +98,17 @@ export default function EditCategoryPage() {
 
     setLoading(true);
     try {
-      await CategoryService.update(categoryId, { 
-        name: name.trim(), 
+      await CategoryService.update(categoryId, {
+        name: name.trim(),
         description: description.trim(),
-        color 
+        color,
+        tags: tags.trim(),
+        icon: icon.trim()
       });
       toast.success('Categoria atualizada com sucesso!');
       router.push('/categories');
-    } catch (error) {
-      toast.error('Erro ao atualizar categoria');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar categoria');
       console.error(error);
     } finally {
       setLoading(false);
@@ -543,7 +523,7 @@ export default function EditCategoryPage() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">Transferir Canal</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Transferir "{selectedChannel.title}" para outra categoria
+                  Transferir {selectedChannel.title} para outra categoria
                 </p>
               </div>
               
