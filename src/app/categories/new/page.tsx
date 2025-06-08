@@ -1,12 +1,12 @@
 // /app/categories/new/page.tsx
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import Button from '@components/ui/button';
-import { CategoryService } from '@lib/services/categoryService';
-import { toast } from 'sonner';
-import DashboardLayout from '@components/layouts/DashboardLayout';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Button from "@components/ui/button";
+import { CategoryService } from "@lib/services/categoryService";
+import { toast } from "sonner";
+import DashboardLayout from "@components/layouts/DashboardLayout";
 import {
   ArrowLeft,
   FolderPlus,
@@ -15,54 +15,59 @@ import {
   Palette,
   Save,
   X,
+  Hash,
   CheckCircle,
   AlertTriangle,
   Loader,
   Info,
-  Lightbulb
-} from 'lucide-react';
+  Lightbulb,
+} from "lucide-react";
 
 export default function NewCategoryPage() {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [color, setColor] = useState('#3B82F6');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [color, setColor] = useState("#3B82F6");
   const [loading, setLoading] = useState(false);
+  const [tags, setTags] = useState("");
+  const [icon, setIcon] = useState("");
   const router = useRouter();
 
   const predefinedColors = [
-    '#3B82F6', // Blue
-    '#10B981', // Green
-    '#F59E0B', // Yellow
-    '#EF4444', // Red
-    '#8B5CF6', // Purple
-    '#F97316', // Orange
-    '#06B6D4', // Cyan
-    '#84CC16', // Lime
-    '#EC4899', // Pink
-    '#6B7280', // Gray
-    '#059669', // Emerald
-    '#DC2626'  // Red
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#F97316",
+    "#06B6D4",
+    "#84CC16",
+    "#EC4899",
+    "#6B7280",
+    "#059669",
+    "#DC2626",
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
-      toast.error('Nome da categoria é obrigatório');
+      toast.error("Nome da categoria é obrigatório");
       return;
     }
 
     setLoading(true);
     try {
-      await CategoryService.create({ 
-        name: name.trim(), 
+      await CategoryService.create({
+        name: name.trim(),
         description: description.trim(),
-        color 
+        color,
+        tags: tags.trim(),
+        icon: icon.trim(),
       });
-      toast.success('Categoria criada com sucesso!');
-      router.push('/categories');
+      toast.success("Categoria criada com sucesso!");
+      router.push("/categories");
     } catch (error) {
-      toast.error('Erro ao criar categoria');
+      toast.error("Erro ao criar categoria");
       console.error(error);
     } finally {
       setLoading(false);
@@ -71,11 +76,11 @@ export default function NewCategoryPage() {
 
   const handleCancel = () => {
     if (name || description) {
-      if (confirm('Deseja descartar as alterações?')) {
-        router.push('/categories');
+      if (confirm("Deseja descartar as alterações?")) {
+        router.push("/categories");
       }
     } else {
-      router.push('/categories');
+      router.push("/categories");
     }
   };
 
@@ -100,8 +105,12 @@ export default function NewCategoryPage() {
                     <FolderPlus className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900">Nova Categoria</h1>
-                    <p className="text-sm text-gray-500">Crie uma categoria para organizar seus canais</p>
+                    <h1 className="text-xl font-bold text-gray-900">
+                      Nova Categoria
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      Crie uma categoria para organizar seus canais
+                    </p>
                   </div>
                 </div>
               </div>
@@ -116,8 +125,12 @@ export default function NewCategoryPage() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Informações da Categoria</h2>
-                  <p className="text-sm text-gray-600 mt-1">Preencha os dados básicos da nova categoria</p>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Informações da Categoria
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Preencha os dados básicos da nova categoria
+                  </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -162,6 +175,39 @@ export default function NewCategoryPage() {
                     </p>
                   </div>
 
+                  {/* Tags Field */}
+                  <div>
+                    <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                      <Hash className="w-4 h-4 mr-2" />
+                      Tags
+                      <span className="text-gray-400 ml-1">
+                        (separadas por vírgula)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="tech, educação, entretenimento..."
+                    />
+                  </div>
+
+                  {/* Icon Field */}
+                  <div>
+                    <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                      <Tag className="w-4 h-4 mr-2" />
+                      Ícone (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={icon}
+                      onChange={(e) => setIcon(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="ex: youtube, rocket, smile..."
+                    />
+                  </div>
+
                   {/* Color Field */}
                   <div>
                     <label className="flex items-center text-sm font-medium text-gray-700 mb-3">
@@ -175,9 +221,9 @@ export default function NewCategoryPage() {
                           type="button"
                           onClick={() => setColor(colorOption)}
                           className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-105 ${
-                            color === colorOption 
-                              ? 'border-gray-800 ring-2 ring-gray-300' 
-                              : 'border-gray-300 hover:border-gray-400'
+                            color === colorOption
+                              ? "border-gray-800 ring-2 ring-gray-300"
+                              : "border-gray-300 hover:border-gray-400"
                           }`}
                           style={{ backgroundColor: colorOption }}
                         >
@@ -194,7 +240,9 @@ export default function NewCategoryPage() {
                         onChange={(e) => setColor(e.target.value)}
                         className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer"
                       />
-                      <span className="text-sm text-gray-600">Ou escolha uma cor personalizada</span>
+                      <span className="text-sm text-gray-600">
+                        Ou escolha uma cor personalizada
+                      </span>
                     </div>
                   </div>
 
@@ -235,25 +283,26 @@ export default function NewCategoryPage() {
               {/* Preview */}
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900">Pré-visualização</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Pré-visualização
+                  </h3>
                 </div>
                 <div className="p-4">
                   <div className="text-center">
-                    <div 
+                    <div
                       className="w-16 h-16 rounded-xl mx-auto flex items-center justify-center text-white mb-3 transition-colors"
                       style={{ backgroundColor: color }}
                     >
                       <Tag className="w-8 h-8" />
                     </div>
                     <h4 className="font-semibold text-gray-900 mb-1">
-                      {name || 'Nome da Categoria'}
+                      {name || "Nome da Categoria"}
                     </h4>
                     <p className="text-xs text-gray-500 line-clamp-2">
-                      {description || 'Descrição da categoria aparecerá aqui...'}
+                      {description ||
+                        "Descrição da categoria aparecerá aqui..."}
                     </p>
-                    <div className="mt-3 text-xs text-gray-400">
-                      0 canais
-                    </div>
+                    <div className="mt-3 text-xs text-gray-400">0 canais</div>
                   </div>
                 </div>
               </div>
@@ -269,15 +318,21 @@ export default function NewCategoryPage() {
                 <div className="p-4 space-y-3">
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-800">Use nomes descritivos e específicos</p>
+                    <p className="text-xs text-blue-800">
+                      Use nomes descritivos e específicos
+                    </p>
                   </div>
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-800">Cores ajudam na identificação visual</p>
+                    <p className="text-xs text-blue-800">
+                      Cores ajudam na identificação visual
+                    </p>
                   </div>
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-800">Descrições facilitam a organização</p>
+                    <p className="text-xs text-blue-800">
+                      Descrições facilitam a organização
+                    </p>
                   </div>
                 </div>
               </div>

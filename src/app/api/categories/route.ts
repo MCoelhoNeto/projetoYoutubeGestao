@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { name, description, color } = await request.json();
+    const { name, description, color, tags, icon } = await request.json();
 
     if (!name || name.trim().length === 0) {
       return NextResponse.json({ error: 'Nome da categoria é obrigatório' }, { status: 400 });
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome da categoria deve ter no máximo 50 caracteres' }, { status: 400 });
     }
 
-    console.log('📁 Criando categoria:', { name, description, color });
+    console.log('📁 Criando categoria:', { name, description, color, tags, icon });
 
     await connectDB();
     const user = await User.findOne({ email: session.user.email });
@@ -99,10 +99,12 @@ export async function POST(request: NextRequest) {
       name: name.trim(),
       description: description?.trim() || '',
       color: color || '#3B82F6',
+      tags: tags?.trim() || '',
+      icon: icon?.trim() || '',
       channelsCount: 0
     });
 
-    // Corrige uso de usage
+    // Atualiza uso do plano
     if (!user.usage) {
       user.usage = { categoriesCount: 0 };
     }
@@ -117,6 +119,8 @@ export async function POST(request: NextRequest) {
         name: category.name,
         description: category.description,
         color: category.color,
+        tags: category.tags,
+        icon: category.icon,
         channelsCount: category.channelsCount,
         createdAt: category.createdAt
       }

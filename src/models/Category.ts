@@ -5,7 +5,9 @@ const categorySchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, default: '' },
   color: { type: String, default: '#3B82F6' },
-  channelsCount: { type: Number, default: 0 }
+  channelsCount: { type: Number, default: 0 },
+  tags: { type: String, default: '' },
+  icon: { type: String, default: '' },
 }, {
   timestamps: true
 });
