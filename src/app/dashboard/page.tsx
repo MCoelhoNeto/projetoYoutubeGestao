@@ -114,12 +114,19 @@ function InfoCard({ icon, title, count, remaining, usage, color }: any) {
 
 function ActionGrid({ router }: any) {
   const actions = [
+      {
+      title: 'Categorias',
+      description: 'Gerencie suas categorias de conteúdo',
+      icon: <FolderOpen size={20} />,
+       color: 'bg-gray-600 hover:bg-gray-700',
+      onClick: () => router.push('/categories'),
+    },
     {
-      title: 'Adicionar Canal',
+      title: 'Canais',
       description: 'Conecte um novo canal do YouTube',
       icon: <Plus size={20} />,
       color: 'bg-red-600 hover:bg-red-700',
-      onClick: () => router.push('/channels/add'),
+      onClick: () => router.push('/channels'),
     },
     {
       title: 'Ver Vídeos',
@@ -135,13 +142,7 @@ function ActionGrid({ router }: any) {
       color: 'bg-green-600 hover:bg-green-700',
       onClick: () => router.push('/analyses'),
     },
-    {
-      title: 'Categorias',
-      description: 'Gerencie suas categorias de conteúdo',
-      icon: <FolderOpen size={20} />,
-       color: 'bg-gray-600 hover:bg-gray-700',
-      onClick: () => router.push('/categories'),
-    },
+  
   ];
 
   return (
