@@ -7,29 +7,8 @@ import { toast } from 'sonner';
 import Button from '@components/ui/button';
 import DashboardLayout from '@components/layouts/DashboardLayout';
 import {
-  ArrowLeft,
-  Youtube,
-  Search,
-  Filter,
-  Plus,
-  ExternalLink,
-  Users,
-  Video,
-  Calendar,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-  Archive,
-  ChevronDown,
-  ChevronRight,
-  BarChart3,
-  Tag,
-  Globe,
-  Eye,
-  Loader,
-  TrendingUp,
-  Hash,
-  Play
+  ArrowLeft, Youtube, Search, Filter, Plus, ExternalLink, Users, Video, Calendar, CheckCircle, Clock, AlertTriangle,
+  Archive, ChevronDown, ChevronRight, BarChart3, Tag, Globe, Eye, Loader, TrendingUp, Hash, Play
 } from 'lucide-react';
 
 interface Channel {
@@ -67,175 +46,89 @@ export default function ChannelsListPage() {
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set());
   const router = useRouter();
 
-  // Mock data - substituir pela API real
   useEffect(() => {
-    const mockData: Category[] = [
-      {
-        _id: '1',
-        name: 'Tech & Programação',
-        color: '#3B82F6',
-        channels: [
-          {
-            _id: 'ch1',
-            youtubeChannelId: 'UCrWvhVmt0Qac3HgsjQK62FQ',
-            title: 'Código Fonte TV',
-            description: 'Canal sobre programação, tecnologia e carreira em desenvolvimento.',
-            customUrl: '@codigofonteTv',
-            country: 'BR',
-            publishedAt: '2017-03-15',
-            subscribers: '856K',
-            totalViews: '45.2M',
-            totalVideos: 486,
-            thumbnail: 'https://yt3.ggpht.com/ytc/APkrFKZWeMCsx4Q9e_Hm6nhOOUQ3fv96QGUXiMr1-pJ=s240-c-k-c0x00ffffff-no-rj',
-            cacheStatus: 'fresh',
-            analysisCount: 8,
-            maxAnalysis: 10,
-            lastAnalysis: '2024-01-15',
-            categoryId: '1'
-          },
-          {
-            _id: 'ch2',
-            youtubeChannelId: 'UCjWnASShNlZlJgF0QYKHh6Q',
-            title: 'Dev Aprender',
-            description: 'Programação do zero ao profissional. Python, JavaScript, React e muito mais.',
-            customUrl: '@DevAprender',
-            country: 'BR',
-            publishedAt: '2019-05-20',
-            subscribers: '324K',
-            totalViews: '12.8M',
-            totalVideos: 203,
-            cacheStatus: 'stale',
-            analysisCount: 3,
-            maxAnalysis: 10,
-            lastAnalysis: '2024-01-10',
-            categoryId: '1'
-          }
-        ]
-      },
-      {
-        _id: '2',
-        name: 'Design & UX',
-        color: '#8B5CF6',
-        channels: [
-          {
-            _id: 'ch3',
-            youtubeChannelId: 'UC_0n3Ga4-9ULJIhD9SLyYlw',
-            title: 'Design Course',
-            description: 'Tutoriais de design, UI/UX e desenvolvimento web.',
-            customUrl: '@designcourse',
-            country: 'US',
-            publishedAt: '2015-08-12',
-            subscribers: '1.2M',
-            totalViews: '87.3M',
-            totalVideos: 892,
-            cacheStatus: 'fresh',
-            analysisCount: 5,
-            maxAnalysis: 10,
-            lastAnalysis: '2024-01-14',
-            categoryId: '2'
-          }
-        ]
-      },
-      {
-        _id: '3',
-        name: 'Lifestyle',
-        color: '#10B981',
-        channels: []
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/categories');
+        if (!res.ok) throw new Error('Erro ao buscar categorias');
+        const data = await res.json();
+        const categoriesWithChannels: Category[] = data.categories.map((cat: any) => ({
+          ...cat,
+          channels: cat.channels || [],
+        }));
+        setCategories(categoriesWithChannels);
+        setExpandedCategories(new Set(categoriesWithChannels.map(cat => cat._id)));
+      } catch (error: any) {
+        toast.error(error.message || 'Erro ao carregar canais');
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    setTimeout(() => {
-      setCategories(mockData);
-      setExpandedCategories(new Set(mockData.map(cat => cat._id)));
-      setLoading(false);
-    }, 1000);
+    fetchCategories();
   }, []);
 
-  // Normalize text for search (remove accents and convert to lowercase)
-  const normalizeText = (text: string) => {
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics/accents
-  };
+  const normalizeText = (text: string) => text.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
-  // Filter channels based on search and category
   const filteredCategories = categories.map(category => ({
     ...category,
     channels: category.channels
       .filter(channel => {
-        const normalizedSearch = normalizeText(searchTerm);
-        const normalizedTitle = normalizeText(channel.title);
-        const normalizedDescription = normalizeText(channel.description || '');
-        
-        const matchesSearch = normalizedTitle.includes(normalizedSearch) ||
-                            normalizedDescription.includes(normalizedSearch);
-        const matchesCategory = selectedCategory === 'all' || category._id === selectedCategory;
-        return matchesSearch && matchesCategory;
+        const normSearch = normalizeText(searchTerm);
+        const normTitle = normalizeText(channel.title);
+        const normDesc = normalizeText(channel.description || '');
+        const matchSearch = normTitle.includes(normSearch) || normDesc.includes(normSearch);
+        const matchCat = selectedCategory === 'all' || category._id === selectedCategory;
+        return matchSearch && matchCat;
       })
       .sort((a, b) => a.title.localeCompare(b.title))
-  })).filter(category => 
-    selectedCategory === 'all' || category._id === selectedCategory || category.channels.length > 0
-  );
+  })).filter(category => selectedCategory === 'all' || category._id === selectedCategory || category.channels.length > 0);
 
-  // Calculate statistics
-  const totalChannels = categories.reduce((sum, cat) => sum + cat.channels.length, 0);
-  const totalActiveChannels = categories.reduce((sum, cat) => 
-    sum + cat.channels.filter(ch => ch.cacheStatus === 'fresh').length, 0
-  );
-  const totalSubscribers = categories.reduce((sum, cat) => 
-    sum + cat.channels.reduce((catSum, ch) => {
-      const subs = ch.subscribers?.replace(/[KM]/g, match => match === 'K' ? '000' : '000000').replace(/\./g, '') || '0';
-      return catSum + parseInt(subs);
-    }, 0), 0
-  );
+  const totalChannels = categories.reduce((sum, c) => sum + c.channels.length, 0);
+  const totalActive = categories.reduce((sum, c) => sum + c.channels.filter(ch => ch.cacheStatus === 'fresh').length, 0);
+  const totalSubscribers = categories.reduce((sum, cat) => sum + cat.channels.reduce((csum, ch) => {
+    const num = ch.subscribers?.replace(/[KM]/g, m => m === 'K' ? '000' : '000000').replace(/\./g, '') || '0';
+    return csum + parseInt(num);
+  }, 0), 0);
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
+  const formatNumber = (n: number) => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : n.toString();
+
+
+ const toggleCategoryExpansion = (id: string) => {
+    const copy = new Set(expandedCategories);
+    copy.has(id) ? copy.delete(id) : copy.add(id);
+    setExpandedCategories(copy);
   };
+
+  const toggleChannelDetails = (id: string) => {
+    const copy = new Set(expandedChannels);
+    copy.has(id) ? copy.delete(id) : copy.add(id);
+    setExpandedChannels(copy);
+  };
+
+  // Expande todas as categorias
+const expandAllCategories = () => {
+  const allCategoryIds = categories.map((cat) => cat._id);
+  setExpandedCategories(new Set(allCategoryIds));
+};
+
+// Recolhe todas as categorias
+const collapseAllCategories = () => {
+  setExpandedCategories(new Set());
+};
+
 
   const getCacheStatusInfo = (status?: string) => {
     switch (status) {
-      case 'fresh':
-        return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', text: 'Atualizado' };
-      case 'stale':
-        return { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-100', text: 'Desatualizado' };
-      case 'empty':
+      case 'fresh': return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', text: 'Atualizado' };
+      case 'stale': return { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-100', text: 'Desatualizado' };
+      case 'empty': default:
         return { icon: AlertTriangle, color: 'text-gray-400', bg: 'bg-gray-100', text: 'Vazio' };
-      default:
-        return { icon: AlertTriangle, color: 'text-gray-400', bg: 'bg-gray-100', text: 'Desconhecido' };
     }
   };
 
-  const toggleCategoryExpansion = (categoryId: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId);
-    } else {
-      newExpanded.add(categoryId);
-    }
-    setExpandedCategories(newExpanded);
-  };
-
-  const collapseAllCategories = () => {
-    setExpandedCategories(new Set());
-  };
-
-  const expandAllCategories = () => {
-    setExpandedCategories(new Set(categories.map(cat => cat._id)));
-  };
-
-  const toggleChannelDetails = (channelId: string) => {
-    const newExpanded = new Set(expandedChannels);
-    if (newExpanded.has(channelId)) {
-      newExpanded.delete(channelId);
-    } else {
-      newExpanded.add(channelId);
-    }
-    setExpandedChannels(newExpanded);
-  };
+ 
 
   return (
     <DashboardLayout>
@@ -361,7 +254,7 @@ export default function ChannelsListPage() {
                     <CheckCircle className="text-green-600" size={20} />
                     <span className="text-sm text-green-600">Ativos</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-900">{totalActiveChannels}</p>
+                  <p className="text-2xl font-bold text-green-900">{totalActive}</p>
                   <p className="text-xs text-green-700 mt-1">atualizados</p>
                 </div>
 
