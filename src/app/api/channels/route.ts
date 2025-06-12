@@ -1,3 +1,4 @@
+// C:\Users\mcoel\Documents\projetos\youtube-manager\src\app\api\channels\route.ts
 import { connectDB } from '@lib/mongodb';
 import Channel from '@models/Channel';
 import { getToken } from 'next-auth/jwt';

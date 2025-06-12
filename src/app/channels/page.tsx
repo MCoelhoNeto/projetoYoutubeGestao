@@ -50,7 +50,7 @@ export default function ChannelsListPage() {
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/categories');
+        const res = await fetch('/api/categories/with-channels');
         if (!res.ok) throw new Error('Erro ao buscar categorias');
         const data = await res.json();
         const categoriesWithChannels: Category[] = data.categories.map((cat: any) => ({

@@ -1,3 +1,4 @@
+// C:\Users\mcoel\Documents\projetos\youtube-manager\src\app\api\categories\route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@lib/mongodb';
