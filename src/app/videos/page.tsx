@@ -108,25 +108,41 @@ export default function VideosPage() {
     }
   };
 
-  const enviarParaAnalise = async (video: Video) => {
-    const res = await fetch("/api/analises", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(video),
-    });
-    const json = await res.json();
-    toast.success(`Vídeo enviado: ${video.title}`);
-    setDados((prev) =>
-      prev.map((cat) => ({
-        ...cat,
-        canais: cat.canais.map((can) => ({
-          ...can,
-          videos: can.videos.map((v) =>
-            v.videoId === video.videoId ? { ...v, status: "analisado" } : v
-          ),
-        })),
-      }))
-    );
+  const enviarParaAnalise = async (video: Video, channelId?: string, categoryId?: string) => {
+    try {
+      const res = await fetch("/api/analises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId: video.videoId,
+          title: video.title,
+          channelId,
+          categoryId
+        }),
+      });
+      
+      const json = await res.json();
+      
+      if (res.ok) {
+        toast.success(`Análise iniciada: ${video.title}`);
+        setDados((prev) =>
+          prev.map((cat) => ({
+            ...cat,
+            canais: cat.canais.map((can) => ({
+              ...can,
+              videos: can.videos.map((v) =>
+                v.videoId === video.videoId ? { ...v, status: "analisado" } : v
+              ),
+            })),
+          })) as Categoria[]
+        );
+      } else {
+        toast.error(json.error || "Erro ao iniciar análise");
+      }
+    } catch (error) {
+      console.error("Erro ao enviar para análise:", error);
+      toast.error("Erro ao iniciar análise");
+    }
   };
 
   const enviarSelecionados = async () => {
@@ -404,7 +420,7 @@ export default function VideosPage() {
                                   <div className="flex items-center space-x-2 flex-shrink-0">
                                     {video.status === "pendente" && (
                                       <button
-                                        onClick={() => enviarParaAnalise(video)}
+                                        onClick={() => enviarParaAnalise(video, canal.canalId, categoria.categoriaNome)}
                                         className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap"
                                       >
                                         <Send className="w-3 h-3 mr-1" />
@@ -490,7 +506,7 @@ export default function VideosPage() {
 
                                   {video.status === "pendente" && (
                                     <button
-                                      onClick={() => enviarParaAnalise(video)}
+                                      onClick={() => enviarParaAnalise(video, canal.canalId, categoria.categoriaNome)}
                                       className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap flex-shrink-0"
                                     >
                                       <Send className="w-3 h-3 mr-1" />
