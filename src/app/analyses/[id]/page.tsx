@@ -18,6 +18,8 @@ import {
   Loader,
   RefreshCw,
   Mail,
+  Save,
+  Edit3,
 } from "lucide-react";
 
 interface Analysis {
@@ -31,6 +33,7 @@ interface Analysis {
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
+  notes?: string;
   channelId?: {
     _id: string;
     title: string;
@@ -51,6 +54,9 @@ export default function AnalysisDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
   const router = useRouter();
   const params = useParams();
   const analysisId = params.id as string;
@@ -74,6 +80,7 @@ export default function AnalysisDetailPage() {
       
       const data = await res.json();
       setAnalysis(data.analysis);
+      setNotes(data.analysis.notes || "");
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar análise");
       router.push("/analyses");
@@ -151,6 +158,37 @@ export default function AnalysisDetailPage() {
       toast.error(error.message || "Erro ao enviar email");
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!analysis) return;
+    
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notes })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao salvar anotações");
+      }
+
+      toast.success("Anotações salvas com sucesso");
+      setIsEditingNotes(false);
+      
+      // Atualizar o analysis local
+      setAnalysis(prev => prev ? { ...prev, notes } : null);
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar anotações");
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -284,31 +322,6 @@ export default function AnalysisDetailPage() {
                   Atualizar
                 </button>
                 
-                {(analysis.status === "completed" || analysis.status === "error") && (
-                  <button
-                    onClick={refazerAnalise}
-                    disabled={refreshing}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {refreshing ? (
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                    )}
-                    {refreshing ? "Refazendo..." : "Refazer Análise"}
-                  </button>
-                )}
-                
-                {analysis.status === "completed" && (
-                  <button
-                    onClick={() => setShowEmailModal(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Enviar por Email
-                  </button>
-                )}
-                
                 <a
                   href={`https://www.youtube.com/watch?v=${analysis.videoId}`}
                   target="_blank"
@@ -359,21 +372,16 @@ export default function AnalysisDetailPage() {
                   </div>
                 </div>
 
+                {/* Video Frame */}
                 <div className="relative overflow-hidden rounded-lg bg-gray-200 mb-4">
-                  <img
-                    src={`https://img.youtube.com/vi/${analysis.videoId}/maxresdefault.jpg`}
-                    alt={analysis.videoTitle}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://img.youtube.com/vi/${analysis.videoId}/hqdefault.jpg`;
-                    }}
+                  <iframe
+                    src={`https://www.youtube.com/embed/${analysis.videoId}`}
+                    title={analysis.videoTitle}
+                    className="w-full h-96"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
@@ -500,6 +508,80 @@ export default function AnalysisDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Notes Editor */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg mr-3">
+                      <Edit3 className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Anotações Extras
+                    </h3>
+                  </div>
+                  {!isEditingNotes && (
+                    <button
+                      onClick={() => setIsEditingNotes(true)}
+                      className="text-sm text-green-600 hover:text-green-700 font-medium"
+                    >
+                      <Edit3 className="w-4 h-4 mr-1 inline" />
+                      Editar
+                    </button>
+                  )}
+                </div>
+                
+                {isEditingNotes ? (
+                  <div className="space-y-4">
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Adicione suas anotações, observações ou comentários sobre este vídeo..."
+                      className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                      disabled={savingNotes}
+                    />
+                    <div className="flex items-center justify-end space-x-3">
+                      <button
+                        onClick={() => {
+                          setIsEditingNotes(false);
+                          setNotes(analysis.notes || "");
+                        }}
+                        disabled={savingNotes}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={saveNotes}
+                        disabled={savingNotes}
+                        className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingNotes ? (
+                          <>
+                            <Loader className="w-4 h-4 mr-2 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Salvar
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    <div className="text-gray-700 whitespace-pre-line min-h-[2rem]">
+                      {notes || (
+                        <span className="text-gray-400 italic">
+                          Nenhuma anotação adicionada. Clique em "Editar" para adicionar suas observações.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Sidebar */}
@@ -515,6 +597,34 @@ export default function AnalysisDetailPage() {
                     <span className={`font-medium ${statusInfo.color}`}>
                       {statusInfo.text}
                     </span>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="space-y-2 pt-4 border-t border-gray-200">
+                    {(analysis.status === "completed" || analysis.status === "error") && (
+                      <button
+                        onClick={refazerAnalise}
+                        disabled={refreshing}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {refreshing ? (
+                          <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        {refreshing ? "Refazendo..." : "Refazer Análise"}
+                      </button>
+                    )}
+                    
+                    {analysis.status === "completed" && (
+                      <button
+                        onClick={() => setShowEmailModal(true)}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Enviar por Email
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -117,4 +117,67 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+// PATCH - Atualizar anotações
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const { id } = await params;
+
+    // Validar se o ID é um ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { notes } = body;
+
+    if (notes === undefined) {
+      return NextResponse.json({ error: "Campo 'notes' é obrigatório" }, { status: 400 });
+    }
+
+    const analysis = await Analysis.findOne({ 
+      _id: id, 
+      userId: user._id 
+    });
+
+    if (!analysis) {
+      return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
+    }
+
+    // Atualizar apenas as anotações
+    await Analysis.findByIdAndUpdate(id, {
+      notes: notes,
+      updatedAt: new Date()
+    });
+
+    console.log(`📝 Anotações da análise ${id} atualizadas`);
+
+    return NextResponse.json({
+      success: true,
+      message: "Anotações atualizadas com sucesso"
+    });
+
+  } catch (error) {
+    console.error("Erro ao atualizar anotações:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
 } 

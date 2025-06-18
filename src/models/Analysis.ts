@@ -38,6 +38,11 @@ const analysisSchema = new Schema({
     required: false,
     default: "",
   },
+  notes: {
+    type: String,
+    required: false,
+    default: "",
+  },
   status: {
     type: String,
     enum: ["processing", "completed", "error"],
