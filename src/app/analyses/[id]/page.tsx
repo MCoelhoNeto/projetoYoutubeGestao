@@ -96,13 +96,14 @@ export default function AnalysisDetailPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Erro ao refazer análise");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao refazer análise");
       }
 
       const data = await res.json();
       toast.success(data.message || "Análise resetada para reprocessamento");
       
-      // Atualizar o status localmente
+      // Atualizar o status localmente imediatamente
       setAnalysis(prev => prev ? {
         ...prev,
         status: "processing" as "processing",
@@ -110,6 +111,11 @@ export default function AnalysisDetailPage() {
         aiSummary: "",
         errorMessage: ""
       } : null);
+
+      // Forçar uma atualização após 2 segundos para verificar o status
+      setTimeout(() => {
+        fetchAnalysis();
+      }, 2000);
 
     } catch (error: any) {
       toast.error(error.message || "Erro ao refazer análise");

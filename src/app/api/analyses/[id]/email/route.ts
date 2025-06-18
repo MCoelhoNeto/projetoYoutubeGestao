@@ -60,7 +60,16 @@ export async function POST(
     };
 
     const getSummary = () => extractSection(analysis.aiSummary || '', '📋 RESUMO GERAL', '🎯 TÓPICOS ABORDADOS');
-    const getTopics = () => extractSection(analysis.aiSummary || '', '🎯 TÓPICOS ABORDADOS', '💡 OPINIÃO ESPECIALIZADA');
+    const getTopics = () => {
+      const topicsText = extractSection(analysis.aiSummary || '', '🎯 TÓPICOS ABORDADOS', '💡 OPINIÃO ESPECIALIZADA');
+      if (topicsText === '🎯 TÓPICOS ABORDADOS não disponível') return 'Tópicos não disponíveis';
+      
+      // Formatar tópicos numerados com espaçamento
+      return topicsText.split('\n')
+        .filter(line => line.trim().match(/^\d+\./))
+        .map(line => line.trim())
+        .join('\n\n');
+    };
     const getOpinion = () => extractSection(analysis.aiSummary || '', '💡 OPINIÃO ESPECIALIZADA');
 
     // Configurar transporter do nodemailer
@@ -100,7 +109,7 @@ export async function POST(
 
         <div style="background-color: #e0f2fe; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0288d1;">
           <h4 style="color: #01579b; margin-top: 0;">🎯 Tópicos Abordados</h4>
-          <div style="color: #0277bd; line-height: 1.6; white-space: pre-line;">
+          <div style="color: #0277bd; line-height: 1.8; white-space: pre-line; font-size: 14px;">
             ${getTopics()}
           </div>
         </div>

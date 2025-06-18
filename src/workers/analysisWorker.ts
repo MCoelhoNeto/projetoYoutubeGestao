@@ -165,11 +165,13 @@ Analise a transcrição do vídeo "${videoTitle}" de forma completa e detalhada.
    - Contexto e objetivo principal do conteúdo
    - Principais conclusões ou takeaways
 
-2. **TÓPICOS DETALHADOS (sem limite)**:
+2. **TÓPICOS DETALHADOS COM EXPLICAÇÕES**:
    - Liste TODOS os assuntos abordados no vídeo
-   - Cada tópico deve ser específico e informativo
+   - Para cada tópico, forneça uma explicação detalhada (2-4 linhas)
    - Inclua conceitos, tecnologias, ferramentas, metodologias mencionadas
+   - Explique o contexto e importância de cada tópico
    - Não limite a quantidade de tópicos - seja completo
+   - Use linguagem técnica quando apropriado
 
 3. **OPINIÃO ESPECIALIZADA**:
    - Se o vídeo for sobre tecnologia da informação, analise como um especialista em TI
@@ -188,9 +190,10 @@ Responda em português brasileiro e formate exatamente assim:
 [1-2 parágrafos com resumo completo]
 
 **TÓPICOS ABORDADOS:**
-- [Lista completa de todos os tópicos, sem limite]
-- [Seja específico e detalhado]
-- [Inclua conceitos técnicos, ferramentas, metodologias]
+1. [Nome do tópico]: [Explicação detalhada de 2-4 linhas sobre o que foi abordado, conceitos explicados, importância do tópico]
+2. [Nome do tópico]: [Explicação detalhada de 2-4 linhas sobre o que foi abordado, conceitos explicados, importância do tópico]
+3. [Nome do tópico]: [Explicação detalhada de 2-4 linhas sobre o que foi abordado, conceitos explicados, importância do tópico]
+[Continue listando todos os tópicos com explicações detalhadas]
 
 **OPINIÃO ESPECIALIZADA:**
 [3 parágrafos com análise técnica e recomendações]
@@ -208,8 +211,8 @@ Responda em português brasileiro e formate exatamente assim:
       const summary = summaryMatch ? summaryMatch[1].trim() : 'Resumo não disponível';
       const topics = topicsMatch 
         ? topicsMatch[1].split('\n')
-            .filter(line => line.trim().startsWith('-'))
-            .map(line => line.trim().substring(2))
+            .filter(line => line.trim().match(/^\d+\./))
+            .map(line => line.trim())
             .filter(topic => topic.length > 0)
         : ['Tópicos não disponíveis'];
       const opinion = opinionMatch ? opinionMatch[1].trim() : 'Opinião não disponível';
@@ -222,7 +225,7 @@ ${summary}
 
 ## 🎯 TÓPICOS ABORDADOS
 
-${topics.map((topic, index) => `${index + 1}. ${topic}`).join('\n')}
+${topics.join('\n\n')}
 
 ## 💡 OPINIÃO ESPECIALIZADA
 
