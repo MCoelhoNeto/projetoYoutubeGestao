@@ -20,7 +20,15 @@ import {
   Mail,
   Save,
   Edit3,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+
+interface Note {
+  text: string;
+  createdAt: string;
+  type: 'resumo' | 'observacao' | 'correlato';
+}
 
 interface Analysis {
   _id: string;
@@ -33,7 +41,7 @@ interface Analysis {
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
-  notes?: string;
+  notes?: Note[];
   channelId?: {
     _id: string;
     title: string;
@@ -54,9 +62,12 @@ export default function AnalysisDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
-  const [notes, setNotes] = useState("");
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [newNoteType, setNewNoteType] = useState<'resumo' | 'observacao' | 'correlato'>('resumo');
+  const [addingNote, setAddingNote] = useState(false);
+  const [showNotesDetails, setShowNotesDetails] = useState(true);
+  const [showSummaryDetails, setShowSummaryDetails] = useState(true);
   const router = useRouter();
   const params = useParams();
   const analysisId = params.id as string;
@@ -80,7 +91,7 @@ export default function AnalysisDetailPage() {
       
       const data = await res.json();
       setAnalysis(data.analysis);
-      setNotes(data.analysis.notes || "");
+      setNotes(data.analysis.notes || []);
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar análise");
       router.push("/analyses");
@@ -161,34 +172,34 @@ export default function AnalysisDetailPage() {
     }
   };
 
-  const saveNotes = async () => {
-    if (!analysis) return;
+  const addNote = async () => {
+    if (!newNoteText.trim()) return;
     
-    setSavingNotes(true);
+    setAddingNote(true);
+    
     try {
       const res = await fetch(`/api/analyses/${analysisId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ notes })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newNoteText, type: newNoteType })
       });
-
+      
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Erro ao salvar anotações");
+        throw new Error(errorData.error || "Erro ao adicionar anotação");
       }
-
-      toast.success("Anotações salvas com sucesso");
-      setIsEditingNotes(false);
       
-      // Atualizar o analysis local
-      setAnalysis(prev => prev ? { ...prev, notes } : null);
-
+      const result = await res.json();
+      
+      // Após adicionar, recarregar do banco
+      await fetchAnalysis();
+      setNewNoteText("");
+      setNewNoteType('resumo');
+      toast.success("Anotação adicionada com sucesso!");
     } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar anotações");
+      toast.error(error.message || "Erro ao adicionar anotação");
     } finally {
-      setSavingNotes(false);
+      setAddingNote(false);
     }
   };
 
@@ -197,6 +208,13 @@ export default function AnalysisDetailPage() {
       fetchAnalysis();
     }
   }, [analysisId]);
+
+  // Atualizar notas quando a análise mudar
+  useEffect(() => {
+    if (analysis?.notes) {
+      setNotes(analysis.notes);
+    }
+  }, [analysis?.notes]);
 
   // Auto-refresh quando estiver processando
   useEffect(() => {
@@ -402,22 +420,106 @@ export default function AnalysisDetailPage() {
                 </div>
               </div>
 
-              {/* AI Analysis */}
+              {/* Notes Editor/Lista com toggle - AGORA PRIMEIRO */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <button
+                  className="flex items-center mb-4 text-green-700 hover:underline"
+                  onClick={() => setShowNotesDetails(v => !v)}
+                >
+                  <div className="p-2 bg-green-100 rounded-lg mr-3">
+                    <Edit3 className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mr-2">
+                    Anotações
+                  </h3>
+                  {showNotesDetails ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+                {showNotesDetails && (
+                  <>
+                    {/* Formulário para nova anotação */}
+                    <div className="mb-6">
+                      <textarea
+                        value={newNoteText}
+                        onChange={e => setNewNoteText(e.target.value)}
+                        placeholder="Adicione uma nova anotação..."
+                        className="w-full h-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none mb-2"
+                        disabled={addingNote}
+                      />
+                      <div className="flex items-center space-x-2 mb-2">
+                        <select
+                          value={newNoteType}
+                          onChange={e => setNewNoteType(e.target.value as any)}
+                          className="px-2 py-1 border border-gray-300 rounded"
+                          disabled={addingNote}
+                        >
+                          <option value="resumo">Meu resumo</option>
+                          <option value="observacao">Observações</option>
+                          <option value="correlato">Assuntos correlatos/pesquisar</option>
+                        </select>
+                        <button
+                          onClick={addNote}
+                          disabled={addingNote || !newNoteText.trim()}
+                          className="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {addingNote ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          Adicionar
+                        </button>
+                        {/* Botão de teste temporário */}
+                        <button
+                          onClick={() => {
+                            toast.info(`Notas: ${notes.length}, Texto: ${newNoteText ? 'Preenchido' : 'Vazio'}, Tipo: ${newNoteType}`);
+                          }}
+                          className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Debug
+                        </button>
+                      </div>
+                    </div>
+                    {/* Lista de anotações */}
+                    <div className="space-y-4">
+                      {notes.length === 0 && (
+                        <div className="text-gray-400 italic">Nenhuma anotação adicionada ainda.</div>
+                      )}
+                      {notes.map((note, idx) => (
+                        <div key={idx} className="border-l-4 pl-4 py-2 bg-gray-50 rounded">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-xs font-semibold uppercase text-green-700">
+                              {note.type === 'resumo' && 'Meu resumo'}
+                              {note.type === 'observacao' && 'Observações'}
+                              {note.type === 'correlato' && 'Assuntos correlatos/pesquisar'}
+                            </span>
+                            <span className="text-xs text-gray-500">{new Date(note.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="text-gray-800 whitespace-pre-line">{note.text}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* AI Analysis com toggle - AGORA DEPOIS */}
               {analysis.status === "completed" && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
-                  <div className="flex items-center mb-4">
+                  <button
+                    className="flex items-center mb-4 text-purple-700 hover:underline"
+                    onClick={() => setShowSummaryDetails(v => !v)}
+                  >
                     <div className="p-2 bg-purple-100 rounded-lg mr-3">
                       <Brain className="w-6 h-6 text-purple-600" />
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900">
+                    <h3 className="text-xl font-semibold text-gray-900 mr-2">
                       Análise da IA
                     </h3>
-                  </div>
-                  <div className="prose prose-sm max-w-none">
-                    <div className="text-gray-700 whitespace-pre-line">
-                      {analysis.aiSummary}
+                    {showSummaryDetails ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </button>
+                  {showSummaryDetails && (
+                    <div className="prose prose-sm max-w-none">
+                      <div className="text-gray-700 whitespace-pre-line">
+                        {analysis.aiSummary}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -508,80 +610,6 @@ export default function AnalysisDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* Notes Editor */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg mr-3">
-                      <Edit3 className="w-6 h-6 text-green-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Anotações Extras
-                    </h3>
-                  </div>
-                  {!isEditingNotes && (
-                    <button
-                      onClick={() => setIsEditingNotes(true)}
-                      className="text-sm text-green-600 hover:text-green-700 font-medium"
-                    >
-                      <Edit3 className="w-4 h-4 mr-1 inline" />
-                      Editar
-                    </button>
-                  )}
-                </div>
-                
-                {isEditingNotes ? (
-                  <div className="space-y-4">
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Adicione suas anotações, observações ou comentários sobre este vídeo..."
-                      className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
-                      disabled={savingNotes}
-                    />
-                    <div className="flex items-center justify-end space-x-3">
-                      <button
-                        onClick={() => {
-                          setIsEditingNotes(false);
-                          setNotes(analysis.notes || "");
-                        }}
-                        disabled={savingNotes}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={saveNotes}
-                        disabled={savingNotes}
-                        className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {savingNotes ? (
-                          <>
-                            <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            Salvando...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Salvar
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="prose prose-sm max-w-none">
-                    <div className="text-gray-700 whitespace-pre-line min-h-[2rem]">
-                      {notes || (
-                        <span className="text-gray-400 italic">
-                          Nenhuma anotação adicionada. Clique em "Editar" para adicionar suas observações.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Sidebar */}

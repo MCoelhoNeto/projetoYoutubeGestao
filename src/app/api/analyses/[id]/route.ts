@@ -12,22 +12,28 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('GET - Iniciando busca de análise');
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
+      console.log('GET - Usuário não autorizado');
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     await connectDB();
+    console.log('GET - Banco conectado');
 
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
+      console.log('GET - Usuário não encontrado');
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
     const { id } = await params;
+    console.log('GET - Buscando análise com ID:', id);
 
     // Validar se o ID é um ObjectId válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('GET - ID inválido');
       return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
     }
 
@@ -39,8 +45,15 @@ export async function GET(
     .populate("categoryId", "name color");
 
     if (!analysis) {
+      console.log('GET - Análise não encontrada');
       return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
     }
+
+    console.log('GET - Análise encontrada:', {
+      id: analysis._id,
+      notesCount: analysis.notes?.length || 0,
+      notes: analysis.notes
+    });
 
     return NextResponse.json({
       success: true,
@@ -48,7 +61,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error("Erro ao buscar análise:", error);
+    console.log("Erro ao buscar análise:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
@@ -111,7 +124,7 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error("Erro ao refazer análise:", error);
+    console.log("Erro ao refazer análise:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
@@ -119,62 +132,94 @@ export async function PUT(
   }
 }
 
-// PATCH - Atualizar anotações
+// PATCH - Adicionar nova anotação (update direto)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('PATCH - Iniciando requisição');
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
+      console.log('PATCH - Usuário não autorizado');
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     await connectDB();
+    console.log('PATCH - Banco conectado');
 
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
+      console.log('PATCH - Usuário não encontrado');
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
     const { id } = await params;
+    console.log('PATCH DEBUG - id:', id, 'userId:', user._id);
 
-    // Validar se o ID é um ObjectId válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('PATCH - ID inválido');
       return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
     }
 
     const body = await request.json();
-    const { notes } = body;
+    const { text, type } = body;
+    console.log('PATCH - Dados recebidos:', { text, type });
 
-    if (notes === undefined) {
-      return NextResponse.json({ error: "Campo 'notes' é obrigatório" }, { status: 400 });
+    if (!text || !type) {
+      console.log('PATCH - Campos obrigatórios faltando');
+      return NextResponse.json({ error: "Campos 'text' e 'type' são obrigatórios" }, { status: 400 });
     }
 
-    const analysis = await Analysis.findOne({ 
-      _id: id, 
-      userId: user._id 
-    });
+    const newNote = {
+      text,
+      type,
+      createdAt: new Date()
+    };
+    console.log('PATCH - Nova nota criada:', newNote);
 
-    if (!analysis) {
+    // Primeiro, verificar se a análise existe e se tem o campo notes
+    const existingAnalysis = await Analysis.findOne({ _id: id, userId: user._id });
+    if (!existingAnalysis) {
+      console.log('PATCH - Análise não encontrada');
       return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
     }
 
-    // Atualizar apenas as anotações
-    await Analysis.findByIdAndUpdate(id, {
-      notes: notes,
-      updatedAt: new Date()
-    });
+    console.log('PATCH - Análise encontrada, notes existem:', !!existingAnalysis.notes);
 
-    console.log(`📝 Anotações da análise ${id} atualizadas`);
+    // Se não tem o campo notes, inicializar com array vazio
+    if (!existingAnalysis.notes) {
+      console.log('PATCH - Inicializando campo notes');
+      await Analysis.updateOne(
+        { _id: id, userId: user._id },
+        { $set: { notes: [] } }
+      );
+    }
 
+    // Update direto no MongoDB
+    const updateResult = await Analysis.updateOne(
+      { _id: id, userId: user._id },
+      {
+        $push: { notes: newNote },
+        $set: { updatedAt: new Date() }
+      }
+    );
+    console.log('PATCH DEBUG - updateOne result:', updateResult);
+
+    if (updateResult.matchedCount === 0) {
+      console.log('PATCH - Análise não encontrada');
+      return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
+    }
+
+    console.log('PATCH - Nota adicionada com sucesso');
     return NextResponse.json({
       success: true,
-      message: "Anotações atualizadas com sucesso"
+      message: "Anotação adicionada com sucesso",
+      note: newNote
     });
 
   } catch (error) {
-    console.error("Erro ao atualizar anotações:", error);
+    console.log("Erro ao adicionar anotação:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

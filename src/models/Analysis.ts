@@ -1,5 +1,15 @@
 import mongoose, { Schema, model, models } from "mongoose";
 
+const noteSchema = new Schema({
+  text: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  type: {
+    type: String,
+    enum: ['resumo', 'observacao', 'correlato'],
+    default: 'resumo',
+  },
+}, { _id: false });
+
 const analysisSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -39,9 +49,9 @@ const analysisSchema = new Schema({
     default: "",
   },
   notes: {
-    type: String,
+    type: [noteSchema],
     required: false,
-    default: "",
+    default: [],
   },
   status: {
     type: String,
