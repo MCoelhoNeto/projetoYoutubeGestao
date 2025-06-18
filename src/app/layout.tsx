@@ -1,14 +1,22 @@
-import { Inter } from 'next/font/google';
-import AuthProvider from '@components/providers/AuthProvider';
-import './globals.css';
-import { Toaster } from 'sonner';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import AuthProvider from "@components/providers/AuthProvider";
+import { Toaster } from "sonner";
+import { startAnalysisWorker } from "@lib/worker";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: 'YouTube Manager IA',
-  description: 'Analise canais do YouTube com inteligência artificial',
+export const metadata: Metadata = {
+  title: "YouTube Manager",
+  description: "Gerencie seus canais do YouTube com IA",
 };
+
+// Inicializar o worker quando o servidor iniciar
+if (typeof window === 'undefined') {
+  // Só executar no servidor
+  startAnalysisWorker();
+}
 
 export default function RootLayout({
   children,

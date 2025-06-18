@@ -44,6 +44,12 @@ interface Categoria {
   canais: Canal[];
 }
 
+const config = {
+  interval: 10000,        // 10s entre verificações
+  maxConcurrent: 3,       // 3 análises simultâneas
+  enabled: true
+}
+
 export default function VideosPage() {
   const [dados, setDados] = useState<Categoria[]>([]);
   const [categoriasFiltradas, setCategoriasFiltradas] = useState<Categoria[]>(

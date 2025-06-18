@@ -58,6 +58,7 @@ export default function AnalysesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [workerStatus, setWorkerStatus] = useState<any>(null);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
@@ -103,8 +104,21 @@ export default function AnalysesPage() {
     }
   };
 
+  const fetchWorkerStatus = async () => {
+    try {
+      const res = await fetch('/api/worker/status');
+      if (res.ok) {
+        const data = await res.json();
+        setWorkerStatus(data);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar status do worker:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAnalyses();
+    fetchWorkerStatus();
   }, []);
 
   const handleStatusFilter = (status: string) => {
@@ -187,6 +201,14 @@ export default function AnalysesPage() {
                     </h1>
                     <p className="text-sm text-gray-500">
                       {totalAnalyses} análises • {completedAnalyses} concluídas
+                      {workerStatus && (
+                        <span className="ml-2">
+                          • Worker: {workerStatus.worker.isRunning ? '🟢 Ativo' : '🔴 Inativo'}
+                          {workerStatus.worker.isRunning && workerStatus.worker.processingCount > 0 && (
+                            <span className="text-blue-600"> ({workerStatus.worker.processingCount} processando)</span>
+                          )}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
