@@ -44,6 +44,7 @@ interface Analysis {
 export default function AnalysisDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showFullTranscription, setShowFullTranscription] = useState(false);
   const router = useRouter();
   const params = useParams();
@@ -72,11 +73,57 @@ export default function AnalysisDetailPage() {
     }
   };
 
+  const refazerAnalise = async () => {
+    if (!analysis) return;
+    
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao refazer análise");
+      }
+
+      const data = await res.json();
+      toast.success(data.message || "Análise resetada para reprocessamento");
+      
+      // Atualizar o status localmente
+      setAnalysis(prev => prev ? {
+        ...prev,
+        status: "processing" as "processing",
+        transcription: "",
+        aiSummary: "",
+        errorMessage: ""
+      } : null);
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao refazer análise");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     if (analysisId) {
       fetchAnalysis();
     }
   }, [analysisId]);
+
+  // Auto-refresh quando estiver processando
+  useEffect(() => {
+    if (analysis?.status === "processing") {
+      const interval = setInterval(() => {
+        fetchAnalysis();
+      }, 5000); // Atualizar a cada 5 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [analysis?.status]);
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -187,6 +234,22 @@ export default function AnalysisDetailPage() {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Atualizar
                 </button>
+                
+                {(analysis.status === "completed" || analysis.status === "error") && (
+                  <button
+                    onClick={refazerAnalise}
+                    disabled={refreshing}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {refreshing ? (
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    {refreshing ? "Refazendo..." : "Refazer Análise"}
+                  </button>
+                )}
+                
                 <a
                   href={`https://www.youtube.com/watch?v=${analysis.videoId}`}
                   target="_blank"
@@ -291,6 +354,29 @@ export default function AnalysisDetailPage() {
                 </div>
               )}
 
+              {/* Processing Status */}
+              {analysis.status === "processing" && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="p-2 bg-yellow-100 rounded-lg mr-3">
+                      <Clock className="w-6 h-6 text-yellow-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Processando Análise
+                    </h3>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <Loader className="w-5 h-5 animate-spin" />
+                    <span>A análise está sendo processada pelo worker. Isso pode levar alguns minutos.</span>
+                  </div>
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-blue-800 text-sm">
+                      💡 <strong>Dica:</strong> Você pode atualizar a página ou clicar em "Atualizar" para ver o progresso.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Error Message */}
               {analysis.status === "error" && analysis.errorMessage && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -305,6 +391,11 @@ export default function AnalysisDetailPage() {
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-800">
                       {analysis.errorMessage}
+                    </p>
+                  </div>
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-yellow-800 text-sm">
+                      🔄 <strong>Solução:</strong> Tente refazer a análise usando o botão "Refazer Análise" no topo da página.
                     </p>
                   </div>
                 </div>
