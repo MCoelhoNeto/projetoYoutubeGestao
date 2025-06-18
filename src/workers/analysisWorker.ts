@@ -156,60 +156,80 @@ class AnalysisWorker {
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
       const prompt = `
-Analise a transcrição do vídeo "${videoTitle}" e forneça:
+Analise a transcrição do vídeo "${videoTitle}" de forma completa e detalhada. Forneça uma análise estruturada que inclua:
 
-1. **Resumo em tópicos** (máximo 5 tópicos principais):
-   - Extraia os pontos mais importantes
-   - Use linguagem clara e objetiva
-   - Cada tópico deve ter no máximo 2 linhas
+## INSTRUÇÕES ESPECÍFICAS:
 
-2. **Opinião sobre o conteúdo**:
-   - Avalie a qualidade e relevância do conteúdo
-   - Identifique pontos fortes e fracos
-   - Sugira melhorias se aplicável
-   - Máximo 3 parágrafos
+1. **RESUMO GERAL (1-2 parágrafos)**:
+   - Síntese completa de tudo o que foi abordado no vídeo
+   - Contexto e objetivo principal do conteúdo
+   - Principais conclusões ou takeaways
 
-Transcrição do vídeo:
+2. **TÓPICOS DETALHADOS (sem limite)**:
+   - Liste TODOS os assuntos abordados no vídeo
+   - Cada tópico deve ser específico e informativo
+   - Inclua conceitos, tecnologias, ferramentas, metodologias mencionadas
+   - Não limite a quantidade de tópicos - seja completo
+
+3. **OPINIÃO ESPECIALIZADA**:
+   - Se o vídeo for sobre tecnologia da informação, analise como um especialista em TI
+   - Avalie a qualidade técnica, precisão das informações
+   - Identifique pontos fortes, fracos e oportunidades de melhoria
+   - Sugira aplicações práticas ou próximos passos
+   - Máximo 3 parágrafos com foco técnico
+
+## TRANSCRIÇÃO DO VÍDEO:
 ${transcript}
 
-Responda em português brasileiro e formate a resposta assim:
-RESUMO:
-- Tópico 1
-- Tópico 2
-- Tópico 3
-- Tópico 4
-- Tópico 5
+## FORMATO DE RESPOSTA:
+Responda em português brasileiro e formate exatamente assim:
 
-OPINIÃO:
-[Seu texto de opinião aqui]
+**RESUMO GERAL:**
+[1-2 parágrafos com resumo completo]
+
+**TÓPICOS ABORDADOS:**
+- [Lista completa de todos os tópicos, sem limite]
+- [Seja específico e detalhado]
+- [Inclua conceitos técnicos, ferramentas, metodologias]
+
+**OPINIÃO ESPECIALIZADA:**
+[3 parágrafos com análise técnica e recomendações]
 `;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const analysisText = response.text();
 
-      // Extrair resumo e opinião
-      const summaryMatch = analysisText.match(/RESUMO:\s*((?:- .*\n?)*)/);
-      const opinionMatch = analysisText.match(/OPINIÃO:\s*([\s\S]*)/);
+      // Extrair seções usando regex mais robusto
+      const summaryMatch = analysisText.match(/\*\*RESUMO GERAL:\*\*\s*([\s\S]*?)(?=\*\*TÓPICOS ABORDADOS:\*\*)/i);
+      const topicsMatch = analysisText.match(/\*\*TÓPICOS ABORDADOS:\*\*\s*([\s\S]*?)(?=\*\*OPINIÃO ESPECIALIZADA:\*\*)/i);
+      const opinionMatch = analysisText.match(/\*\*OPINIÃO ESPECIALIZADA:\*\*\s*([\s\S]*)/i);
 
-      const summary = summaryMatch 
-        ? summaryMatch[1].split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim().substring(2))
-        : ['Análise não disponível'];
-
+      const summary = summaryMatch ? summaryMatch[1].trim() : 'Resumo não disponível';
+      const topics = topicsMatch 
+        ? topicsMatch[1].split('\n')
+            .filter(line => line.trim().startsWith('-'))
+            .map(line => line.trim().substring(2))
+            .filter(topic => topic.length > 0)
+        : ['Tópicos não disponíveis'];
       const opinion = opinionMatch ? opinionMatch[1].trim() : 'Opinião não disponível';
 
-      // Combinar em um texto único
+      // Formatar a análise final
       const aiSummary = `
-## Resumo em Tópicos
+## 📋 RESUMO GERAL
 
-### Principais Assuntos Abordados:
-${summary.map((item, index) => `- Tópico ${index + 1}: ${item}`).join('\n')}
+${summary}
 
-### Opinião:
+## 🎯 TÓPICOS ABORDADOS
+
+${topics.map((topic, index) => `${index + 1}. ${topic}`).join('\n')}
+
+## 💡 OPINIÃO ESPECIALIZADA
+
 ${opinion}
 `;
 
-      console.log(`✅ Análise gerada pelo Gemini`);
+      console.log(`✅ Análise completa gerada pelo Gemini`);
       return aiSummary;
 
     } catch (error) {
