@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { connectDB } from "@lib/mongodb";
 import Channel from "@models/Channel";
 import User from "@models/User";
+import Category from "@models/Category";
 
 // GET - Buscar canal específico
 export async function GET(
@@ -114,6 +115,39 @@ export async function DELETE(
     });
   } catch (error) {
     console.error("Erro ao excluir canal:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET_CATEGORIES_WITH_CHANNELS(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const categories = await Category.find({ userId: user._id })
+      .populate({
+        path: 'channels',
+        select: 'youtubeChannelId title description customUrl country publishedAt subscribers totalViews totalVideos thumbnail cacheStatus analysisCount maxAnalysis lastAnalysis categoryId socialLinks'
+      });
+
+    return NextResponse.json({ categories });
+  } catch (error) {
+    console.error("Erro ao buscar categorias com canais:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

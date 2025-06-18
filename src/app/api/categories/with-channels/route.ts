@@ -43,7 +43,8 @@ export async function GET(_: NextRequest) {
         cacheStatus: channel.cacheStatus,
         analysisCount: channel.analysisCount,
         maxAnalysis: channel.maxAnalysis,
-        lastAnalysis: channel.lastAnalysis
+        lastAnalysis: channel.lastAnalysis,
+        socialLinks: channel.socialLinks || {}
       });
     }
 

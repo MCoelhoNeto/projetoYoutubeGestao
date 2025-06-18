@@ -30,6 +30,8 @@ import {
   TrendingUp,
   Hash,
   Play,
+  Instagram,
+  Linkedin,
 } from "lucide-react";
 
 interface Channel {
@@ -49,6 +51,11 @@ interface Channel {
   maxAnalysis?: number;
   lastAnalysis?: string;
   categoryId?: string;
+  socialLinks?: {
+    instagram?: string;
+    linkedin?: string;
+    website?: string;
+  };
 }
 
 interface Category {
@@ -69,7 +76,7 @@ export default function ChannelsListPage() {
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(
     new Set()
   );
-  const [imageError, setImageError] = useState({})
+  const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
   const router = useRouter();
 
@@ -530,7 +537,7 @@ export default function ChannelsListPage() {
                                         <div className="flex items-start space-x-4">
                                           <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                                             {channel.thumbnail &&
-                                            !imageError[channel.id] ? (
+                                            !imageError[channel._id] ? (
                                               <Image
                                                 src={channel.thumbnail}
                                                 alt={channel.title}
@@ -539,11 +546,11 @@ export default function ChannelsListPage() {
                                                 onError={() =>
                                                   setImageError((prev) => ({
                                                     ...prev,
-                                                    [channel.id]: true,
+                                                    [channel._id]: true,
                                                   }))
                                                 }
                                                 placeholder="blur"
-                                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAQFBAYFBQYJBgUGCQsIBgYICwwKCgsKCgwQDAwMDAwMEAwODxAPDgwTExQUExMcGxsbHB8fHx8fHx8fHx//2wBDAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAQFBAYFBQYJBgUGCQsIBgYICwwKCgsKCgwQDAwMDAwMEAwODxAPDgwTExQUExMcGxsbHB8fHx8fHx8fHx//2wBDAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                                                 priority
                                               />
                                             ) : (
@@ -600,11 +607,45 @@ export default function ChannelsListPage() {
                                         </div>
 
                                         <div className="flex items-center space-x-2 ml-4">
+                                          {/* Instagram */}
+                                          {channel.socialLinks?.instagram && (
+                                            <a
+                                              href={channel.socialLinks.instagram}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="p-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded hover:from-pink-600 hover:to-purple-700 transition-all"
+                                              title="Instagram"
+                                            >
+                                              <Instagram className="w-4 h-4" />
+                                            </a>
+                                          )}
+                                          {/* LinkedIn */}
+                                          {channel.socialLinks?.linkedin && (
+                                            <a
+                                              href={channel.socialLinks.linkedin}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                              title="LinkedIn"
+                                            >
+                                              <Linkedin className="w-4 h-4" />
+                                            </a>
+                                          )}
+                                          {/* Site */}
+                                          {channel.socialLinks?.website && (
+                                            <a
+                                              href={channel.socialLinks.website}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                              title="Site Oficial"
+                                            >
+                                              <Globe className="w-4 h-4" />
+                                            </a>
+                                          )}
+                                          {/* YouTube */}
                                           <a
-                                            href={`https://youtube.com/${
-                                              channel.customUrl ||
-                                              channel.youtubeChannelId
-                                            }/videos`}
+                                            href={`https://youtube.com/@${channel.customUrl || channel.youtubeChannelId}/videos`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="p-2 text-gray-400 hover:text-red-600 transition-colors"
