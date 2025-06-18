@@ -79,11 +79,42 @@ export default function VideosPage() {
 
       setDados(dadosComStatus);
       setCategoriasFiltradas(dadosComStatus);
+      
+      // Verificar análises existentes
+      await verificarAnalisesExistentes(dadosComStatus);
     } catch (err) {
       toast.error("Erro inesperado ao carregar vídeos");
       console.error(err);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const verificarAnalisesExistentes = async (dadosVideos: Categoria[]) => {
+    try {
+      const res = await fetch("/api/analyses");
+      if (res.ok) {
+        const { analyses } = await res.json();
+        const videoIdsAnalisados = analyses
+          .filter((a: any) => a.status === "completed")
+          .map((a: any) => a.videoId);
+
+        // Atualizar status dos vídeos que já foram analisados
+        setDados((prev) =>
+          prev.map((cat) => ({
+            ...cat,
+            canais: cat.canais.map((can) => ({
+              ...can,
+              videos: can.videos.map((v) => ({
+                ...v,
+                status: videoIdsAnalisados.includes(v.videoId) ? "analisado" as "analisado" : v.status,
+              })),
+            })),
+          })) as Categoria[]
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao verificar análises existentes:", error);
     }
   };
 
@@ -119,7 +150,7 @@ export default function VideosPage() {
           for (const canal of categoria.canais) {
             if (canal.videos.some(v => v.videoId === video.videoId)) {
               foundChannelId = canal.canalId;
-              foundCategoryId = categoria.categoriaNome; // Usando o nome da categoria como ID
+              foundCategoryId = categoria.categoriaNome; // Usar o nome da categoria
               break;
             }
           }
@@ -132,7 +163,7 @@ export default function VideosPage() {
         return;
       }
 
-      const res = await fetch("/api/analises", {
+      const res = await fetch("/api/analyses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,6 +178,7 @@ export default function VideosPage() {
       
       if (res.ok) {
         toast.success(`Análise iniciada: ${video.title}`);
+        // Atualizar o status do vídeo para "analisado" imediatamente
         setDados((prev) =>
           prev.map((cat) => ({
             ...cat,
@@ -159,7 +191,24 @@ export default function VideosPage() {
           })) as Categoria[]
         );
       } else {
-        toast.error(json.error || "Erro ao iniciar análise");
+        if (res.status === 409) {
+          // Análise já existe
+          toast.info(`Análise já existe para: ${video.title}`);
+          // Atualizar o status do vídeo para "analisado"
+          setDados((prev) =>
+            prev.map((cat) => ({
+              ...cat,
+              canais: cat.canais.map((can) => ({
+                ...can,
+                videos: can.videos.map((v) =>
+                  v.videoId === video.videoId ? { ...v, status: "analisado" as "analisado" } : v
+                ),
+              })),
+            })) as Categoria[]
+          );
+        } else {
+          toast.error(json.error || "Erro ao iniciar análise");
+        }
       }
     } catch (error) {
       console.error("Erro ao enviar para análise:", error);

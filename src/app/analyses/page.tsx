@@ -80,13 +80,24 @@ export default function AnalysesPage() {
       }
 
       const res = await fetch(`/api/analyses?${params}`);
-      if (!res.ok) throw new Error("Erro ao buscar análises");
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Sessão expirada. Faça login novamente.");
+          return;
+        }
+        throw new Error("Erro ao buscar análises");
+      }
       
       const data = await res.json();
-      setAnalyses(data.analyses);
-      setPagination(data.pagination);
+      if (data.success) {
+        setAnalyses(data.analyses);
+        setPagination(data.pagination);
+      } else {
+        throw new Error(data.error || "Erro ao carregar análises");
+      }
     } catch (error: any) {
       toast.error(error.message || "Erro ao carregar análises");
+      console.error("Erro ao buscar análises:", error);
     } finally {
       setLoading(false);
     }

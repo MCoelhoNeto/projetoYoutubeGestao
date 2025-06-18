@@ -3,11 +3,15 @@
 import { useAuth } from '@hooks/useAuth';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Youtube,
   LogOut,
   Crown,
+  Home,
+  Play,
+  Brain,
+  Settings,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -17,10 +21,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   } = useAuth();
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/auth/signin' });
   };
+
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Vídeos', href: '/videos', icon: Play },
+    { name: 'Análises', href: '/analyses', icon: Brain },
+  ];
 
   if (!user || status === 'loading') return <p>Carregando...</p>;
 
@@ -61,6 +72,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <LogOut size={20} />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => router.push(item.href)}
+                    className={`flex items-center px-3 py-4 text-sm font-medium border-b-2 transition-colors ${
+                      isActive
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4 mr-2" />
+                    {item.name}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
         </div>
       </header>

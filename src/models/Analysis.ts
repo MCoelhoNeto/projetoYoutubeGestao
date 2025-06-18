@@ -18,6 +18,7 @@ const analysisSchema = new mongoose.Schema({
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
+    required: false,
   },
   videoTitle: {
     type: String,
@@ -29,11 +30,13 @@ const analysisSchema = new mongoose.Schema({
   },
   transcription: {
     type: String,
-    required: true,
+    required: false,
+    default: "",
   },
   aiSummary: {
     type: String,
-    required: true,
+    required: false,
+    default: "",
   },
   status: {
     type: String,
@@ -42,6 +45,7 @@ const analysisSchema = new mongoose.Schema({
   },
   errorMessage: {
     type: String,
+    required: false,
   },
   createdAt: {
     type: Date,
@@ -59,5 +63,9 @@ analysisSchema.pre("save", function (next) {
   next();
 });
 
-export default mongoose.models.Analysis ||
-  mongoose.model("Analysis", analysisSchema); 
+// Forçar recriação do modelo para evitar cache
+if (mongoose.models.Analysis) {
+  delete mongoose.models.Analysis;
+}
+
+export default mongoose.model("Analysis", analysisSchema); 

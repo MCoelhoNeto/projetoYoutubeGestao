@@ -1,0 +1,408 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { toast } from "sonner";
+import DashboardLayout from "@components/layouts/DashboardLayout";
+import {
+  ArrowLeft,
+  Play,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Brain,
+  FileText,
+  Calendar,
+  ExternalLink,
+  Tag,
+  Loader,
+  RefreshCw,
+} from "lucide-react";
+
+interface Analysis {
+  _id: string;
+  videoId: string;
+  videoTitle: string;
+  channelName: string;
+  transcription: string;
+  aiSummary: string;
+  status: "processing" | "completed" | "error";
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+  channelId?: {
+    _id: string;
+    title: string;
+  };
+  categoryId?: {
+    _id: string;
+    name: string;
+    color: string;
+  };
+}
+
+export default function AnalysisDetailPage() {
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showFullTranscription, setShowFullTranscription] = useState(false);
+  const router = useRouter();
+  const params = useParams();
+  const analysisId = params.id as string;
+
+  const fetchAnalysis = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast.error("Análise não encontrada");
+          router.push("/analyses");
+          return;
+        }
+        throw new Error("Erro ao buscar análise");
+      }
+      
+      const data = await res.json();
+      setAnalysis(data.analysis);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar análise");
+      router.push("/analyses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (analysisId) {
+      fetchAnalysis();
+    }
+  }, [analysisId]);
+
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "completed":
+        return {
+          icon: CheckCircle,
+          color: "text-green-500",
+          bg: "bg-green-100",
+          text: "Concluída",
+        };
+      case "processing":
+        return {
+          icon: Clock,
+          color: "text-yellow-500",
+          bg: "bg-yellow-100",
+          text: "Processando",
+        };
+      case "error":
+        return {
+          icon: AlertTriangle,
+          color: "text-red-500",
+          bg: "bg-red-100",
+          text: "Erro",
+        };
+      default:
+        return {
+          icon: Clock,
+          color: "text-gray-500",
+          bg: "bg-gray-100",
+          text: "Desconhecido",
+        };
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="flex items-center space-x-3 text-gray-600">
+            <Loader className="w-5 h-5 animate-spin" />
+            <span>Carregando análise...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Análise não encontrada
+            </h3>
+            <button
+              onClick={() => router.push("/analyses")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar para Análises
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const statusInfo = getStatusInfo(analysis.status);
+
+  return (
+    <DashboardLayout>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.push("/analyses")}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar
+                </button>
+                <div className="hidden sm:block w-px h-6 bg-gray-300" />
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Brain className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">
+                      Detalhes da Análise
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      {analysis.videoTitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={fetchAnalysis}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Atualizar
+                </button>
+                <a
+                  href={`https://www.youtube.com/watch?v=${analysis.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Ver no YouTube
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Video Info */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      {analysis.videoTitle}
+                    </h2>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                      <span className="flex items-center">
+                        <Tag className="w-4 h-4 mr-1" />
+                        {analysis.channelName}
+                      </span>
+                      {analysis.categoryId && (
+                        <span
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          style={{
+                            backgroundColor: `${analysis.categoryId.color}20`,
+                            color: analysis.categoryId.color,
+                          }}
+                        >
+                          {analysis.categoryId.name}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bg}`}>
+                        <statusInfo.icon className={`w-3 h-3 mr-1 ${statusInfo.color}`} />
+                        {statusInfo.text}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-lg bg-gray-200 mb-4">
+                  <img
+                    src={`https://img.youtube.com/vi/${analysis.videoId}/maxresdefault.jpg`}
+                    alt={analysis.videoTitle}
+                    className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://img.youtube.com/vi/${analysis.videoId}/hqdefault.jpg`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      Criada em: {new Date(analysis.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {analysis.updatedAt !== analysis.createdAt && (
+                    <div className="flex items-center space-x-1">
+                      <RefreshCw className="w-4 h-4" />
+                      <span>
+                        Atualizada em: {new Date(analysis.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* AI Analysis */}
+              {analysis.status === "completed" && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                      <Brain className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Análise da IA
+                    </h3>
+                  </div>
+                  <div className="prose prose-sm max-w-none">
+                    <div className="text-gray-700 whitespace-pre-line">
+                      {analysis.aiSummary}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {analysis.status === "error" && analysis.errorMessage && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="p-2 bg-red-100 rounded-lg mr-3">
+                      <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Erro na Análise
+                    </h3>
+                  </div>
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800">
+                      {analysis.errorMessage}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Transcription */}
+              {analysis.status === "completed" && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Transcrição Completa
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setShowFullTranscription(!showFullTranscription)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      {showFullTranscription ? "Mostrar Menos" : "Mostrar Mais"}
+                    </button>
+                  </div>
+                  <div className="prose prose-sm max-w-none">
+                    <div
+                      className={`text-gray-700 whitespace-pre-line ${
+                        showFullTranscription ? "" : "max-h-96 overflow-hidden"
+                      }`}
+                    >
+                      {analysis.transcription}
+                    </div>
+                    {!showFullTranscription && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => setShowFullTranscription(true)}
+                          className="text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Mostrar transcrição completa...
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Status Card */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Status da Análise
+                </h3>
+                <div className="space-y-3">
+                  <div className={`flex items-center p-3 rounded-lg ${statusInfo.bg}`}>
+                    <statusInfo.icon className={`w-5 h-5 ${statusInfo.color} mr-3`} />
+                    <span className={`font-medium ${statusInfo.color}`}>
+                      {statusInfo.text}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Video Details */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Detalhes do Vídeo
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">ID do Vídeo:</span>
+                    <p className="text-sm text-gray-900 font-mono">{analysis.videoId}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Canal:</span>
+                    <p className="text-sm text-gray-900">{analysis.channelName}</p>
+                  </div>
+                  {analysis.categoryId && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Categoria:</span>
+                      <span
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2"
+                        style={{
+                          backgroundColor: `${analysis.categoryId.color}20`,
+                          color: analysis.categoryId.color,
+                        }}
+                      >
+                        {analysis.categoryId.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+} 
