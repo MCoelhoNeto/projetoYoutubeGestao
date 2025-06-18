@@ -13,7 +13,7 @@ const analysisSchema = new mongoose.Schema({
   channelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Channel",
-    required: true,
+    required: false,
   },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -72,7 +72,7 @@ export default function VideosPage() {
           ...canal,
           videos: canal.videos.map((v) => ({
             ...v,
-            status: "pendente",
+            status: "pendente" as const,
           })),
         })),
       }));
@@ -110,14 +110,36 @@ export default function VideosPage() {
 
   const enviarParaAnalise = async (video: Video, channelId?: string, categoryId?: string) => {
     try {
+      // Encontrar o canal e categoria do vídeo
+      let foundChannelId = channelId;
+      let foundCategoryId = categoryId;
+      
+      if (!foundChannelId || !foundCategoryId) {
+        for (const categoria of dados) {
+          for (const canal of categoria.canais) {
+            if (canal.videos.some(v => v.videoId === video.videoId)) {
+              foundChannelId = canal.canalId;
+              foundCategoryId = categoria.categoriaNome; // Usando o nome da categoria como ID
+              break;
+            }
+          }
+          if (foundChannelId && foundCategoryId) break;
+        }
+      }
+
+      if (!foundChannelId || !foundCategoryId) {
+        toast.error("Não foi possível identificar o canal ou categoria do vídeo");
+        return;
+      }
+
       const res = await fetch("/api/analises", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           videoId: video.videoId,
-          title: video.title,
-          channelId,
-          categoryId
+          videoTitle: video.title,
+          channelId: foundChannelId,
+          categoryId: foundCategoryId
         }),
       });
       
@@ -131,7 +153,7 @@ export default function VideosPage() {
             canais: cat.canais.map((can) => ({
               ...can,
               videos: can.videos.map((v) =>
-                v.videoId === video.videoId ? { ...v, status: "analisado" } : v
+                v.videoId === video.videoId ? { ...v, status: "analisado" as "analisado" } : v
               ),
             })),
           })) as Categoria[]
@@ -146,14 +168,20 @@ export default function VideosPage() {
   };
 
   const enviarSelecionados = async () => {
-    const todos = dados.flatMap((cat) =>
+    const videosComContexto = dados.flatMap((cat) =>
       cat.canais.flatMap((can) =>
-        can.videos.filter((v) => selecionados.includes(v.videoId))
+        can.videos
+          .filter((v) => selecionados.includes(v.videoId))
+          .map((v) => ({
+            video: v,
+            channelId: can.canalId,
+            categoryId: cat.categoriaNome
+          }))
       )
     );
 
-    for (const video of todos) {
-      await enviarParaAnalise(video);
+    for (const { video, channelId, categoryId } of videosComContexto) {
+      await enviarParaAnalise(video, channelId, categoryId);
     }
     setSelecionados([]);
   };
