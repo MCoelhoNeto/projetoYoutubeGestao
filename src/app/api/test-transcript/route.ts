@@ -15,23 +15,54 @@ export async function POST(request: NextRequest) {
 
     console.log(`🧪 Testando transcrição para: ${videoId}`);
 
-    // Testar o novo serviço de transcrição
-    const transcript = await YouTubeTranscriptService.getTranscript(videoId);
+    // Teste 1: Verificar se tem transcrições disponíveis
+    console.log(`📋 Teste 1: Verificando transcrições disponíveis`);
+    const availableTranscripts = await YouTubeTranscriptService.getAvailableTranscripts(videoId);
+    console.log(`📊 Transcrições disponíveis:`, availableTranscripts);
+
+    // Teste 2: Verificar se tem transcrição
+    console.log(`🔍 Teste 2: Verificando se tem transcrição`);
+    const hasTranscript = await YouTubeTranscriptService.hasTranscript(videoId);
+    console.log(`📊 Tem transcrição:`, hasTranscript);
+
+    // Teste 3: Tentar obter a transcrição
+    console.log(`📄 Teste 3: Tentando obter transcrição`);
+    let transcript = null;
+    let transcriptError = null;
+    
+    try {
+      transcript = await YouTubeTranscriptService.getTranscript(videoId);
+      console.log(`✅ Transcrição obtida com sucesso, tamanho: ${transcript?.length || 0}`);
+    } catch (error) {
+      transcriptError = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error(`❌ Erro ao obter transcrição:`, error);
+    }
+
+    const response = {
+      success: true,
+      videoId,
+      testResults: {
+        availableTranscripts: availableTranscripts,
+        hasTranscript: hasTranscript,
+        transcriptObtained: !!transcript,
+        transcriptLength: transcript ? transcript.length : 0,
+        transcriptPreview: transcript ? transcript.substring(0, 200) + '...' : null,
+        transcriptError: transcriptError
+      },
+      message: transcript ? 'Transcrição obtida com sucesso' : 'Não foi possível obter a transcrição',
+      debug: {
+        availableTranscriptsCount: availableTranscripts.length,
+        hasTranscriptResult: hasTranscript,
+        transcriptSuccess: !!transcript
+      }
+    };
+
+    console.log(`📊 Resultado dos testes:`, response);
 
     if (transcript) {
-      return NextResponse.json({
-        success: true,
-        videoId,
-        transcriptLength: transcript.length,
-        transcriptPreview: transcript.substring(0, 200) + '...',
-        message: 'Transcrição obtida com sucesso'
-      });
+      return NextResponse.json(response);
     } else {
-      return NextResponse.json({
-        success: false,
-        videoId,
-        message: 'Não foi possível obter a transcrição. Verifique se o vídeo tem legendas disponíveis.'
-      }, { status: 404 });
+      return NextResponse.json(response, { status: 404 });
     }
 
   } catch (error) {
@@ -39,7 +70,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Erro ao testar transcrição', 
-        details: error instanceof Error ? error.message : 'Erro desconhecido' 
+        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     );
@@ -48,6 +80,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Use POST com { "videoId": "ID_DO_VIDEO" } para testar a transcrição'
+    message: 'Use POST com { "videoId": "ID_DO_VIDEO" } para testar transcrições'
   });
 } 

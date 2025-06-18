@@ -23,11 +23,18 @@ export async function POST(request: NextRequest) {
     
     // Tentar obter uma transcrição de exemplo
     let sampleTranscript = null;
+    let transcriptError = null;
+    
     if (hasTranscript) {
-      sampleTranscript = await YouTubeTranscriptService.getTranscript(videoId);
+      try {
+        sampleTranscript = await YouTubeTranscriptService.getTranscript(videoId);
+      } catch (error) {
+        transcriptError = error instanceof Error ? error.message : 'Erro desconhecido';
+        console.error('❌ Erro ao obter transcrição de exemplo:', error);
+      }
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       videoId,
       hasTranscript,
@@ -39,15 +46,25 @@ export async function POST(request: NextRequest) {
       })),
       sampleTranscriptLength: sampleTranscript ? sampleTranscript.length : 0,
       sampleTranscriptPreview: sampleTranscript ? sampleTranscript.substring(0, 200) + '...' : null,
-      message: hasTranscript ? 'Transcrição disponível' : 'Nenhuma transcrição encontrada'
-    });
+      transcriptError,
+      message: hasTranscript ? 'Transcrição disponível' : 'Nenhuma transcrição encontrada',
+      debug: {
+        availableTranscriptsCount: availableTranscripts.length,
+        hasTranscriptResult: hasTranscript,
+        sampleTranscriptSuccess: !!sampleTranscript
+      }
+    };
+
+    console.log(`📊 Resposta da verificação:`, response);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('❌ Erro ao verificar transcrição:', error);
     return NextResponse.json(
       { 
         error: 'Erro ao verificar transcrição', 
-        details: error instanceof Error ? error.message : 'Erro desconhecido' 
+        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     );
