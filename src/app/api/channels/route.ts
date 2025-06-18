@@ -28,3 +28,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = await getToken({ req });
+
+    if (!token?.userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const channels = await Channel.find({ userId: token.userId })
+      .select('_id title channelId')
+      .sort({ title: 1 });
+
+    return NextResponse.json({ success: true, channels });
+  } catch (err) {
+    console.error('Erro ao buscar canais:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
+}

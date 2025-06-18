@@ -24,6 +24,12 @@ import {
   FileText,
 } from "lucide-react";
 
+interface Channel {
+  _id: string;
+  title: string;
+  channelId: string;
+}
+
 interface Analysis {
   _id: string;
   videoId: string;
@@ -55,9 +61,11 @@ interface Pagination {
 
 export default function AnalysesPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
   const [workerStatus, setWorkerStatus] = useState<any>(null);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -68,7 +76,21 @@ export default function AnalysesPage() {
 
   const router = useRouter();
 
-  const fetchAnalyses = async (page = 1, status = "all") => {
+  const fetchChannels = async () => {
+    try {
+      const res = await fetch('/api/channels');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setChannels(data.channels);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar canais:", error);
+    }
+  };
+
+  const fetchAnalyses = async (page = 1, status = "all", channel = "all") => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -78,6 +100,10 @@ export default function AnalysesPage() {
       
       if (status !== "all") {
         params.append("status", status);
+      }
+
+      if (channel !== "all") {
+        params.append("channelId", channel);
       }
 
       const res = await fetch(`/api/analyses?${params}`);
@@ -117,17 +143,23 @@ export default function AnalysesPage() {
   };
 
   useEffect(() => {
+    fetchChannels();
     fetchAnalyses();
     fetchWorkerStatus();
   }, []);
 
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status);
-    fetchAnalyses(1, status);
+    fetchAnalyses(1, status, channelFilter);
+  };
+
+  const handleChannelFilter = (channel: string) => {
+    setChannelFilter(channel);
+    fetchAnalyses(1, statusFilter, channel);
   };
 
   const handlePageChange = (page: number) => {
-    fetchAnalyses(page, statusFilter);
+    fetchAnalyses(page, statusFilter, channelFilter);
   };
 
   const getStatusInfo = (status: string) => {
@@ -246,11 +278,27 @@ export default function AnalysesPage() {
                     <option value="error">Com erro</option>
                   </select>
                 </div>
+
+                <div className="relative">
+                  <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={channelFilter}
+                    onChange={(e) => handleChannelFilter(e.target.value)}
+                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
+                  >
+                    <option value="all">Todos os canais</option>
+                    {channels.map((channel) => (
+                      <option key={channel._id} value={channel._id}>
+                        {channel.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center space-x-3">
                 <button
-                  onClick={() => fetchAnalyses(pagination.page, statusFilter)}
+                  onClick={() => fetchAnalyses(pagination.page, statusFilter, channelFilter)}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />

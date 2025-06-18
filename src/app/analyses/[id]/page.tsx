@@ -17,6 +17,7 @@ import {
   Tag,
   Loader,
   RefreshCw,
+  Mail,
 } from "lucide-react";
 
 interface Analysis {
@@ -47,6 +48,9 @@ export default function AnalysisDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [showFullTranscription, setShowFullTranscription] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
   const router = useRouter();
   const params = useParams();
   const analysisId = params.id as string;
@@ -111,6 +115,36 @@ export default function AnalysisDetailPage() {
       toast.error(error.message || "Erro ao refazer análise");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const sendEmail = async () => {
+    if (!emailAddress || !analysis) return;
+    
+    setSendingEmail(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: emailAddress })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao enviar email");
+      }
+
+      const data = await res.json();
+      toast.success(data.message || "Email enviado com sucesso");
+      setShowEmailModal(false);
+      setEmailAddress("");
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar email");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -256,6 +290,16 @@ export default function AnalysisDetailPage() {
                       <RefreshCw className="w-4 h-4 mr-2" />
                     )}
                     {refreshing ? "Refazendo..." : "Refazer Análise"}
+                  </button>
+                )}
+                
+                {analysis.status === "completed" && (
+                  <button
+                    onClick={() => setShowEmailModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Enviar por Email
                   </button>
                 )}
                 
@@ -502,6 +546,62 @@ export default function AnalysisDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Email Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-green-100 rounded-lg mr-3">
+                  <Mail className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Enviar por Email
+                </h3>
+              </div>
+              
+              <p className="text-gray-600 mb-4">
+                Digite o endereço de email para onde deseja enviar a análise:
+              </p>
+              
+              <input
+                type="email"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                placeholder="exemplo@email.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                disabled={sendingEmail}
+              />
+              
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setEmailAddress("");
+                  }}
+                  disabled={sendingEmail}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={sendEmail}
+                  disabled={!emailAddress || sendingEmail}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin inline" />
+                      Enviando...
+                    </>
+                  ) : (
+                    "Enviar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
