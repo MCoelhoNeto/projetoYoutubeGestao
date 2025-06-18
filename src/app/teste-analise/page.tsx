@@ -53,7 +53,7 @@ export default function TesteAnalisePage() {
 
   const listarAnalises = async () => {
     try {
-      const response = await fetch("/api/analyses/test");
+      const response = await fetch("/api/analises/test");
       const data = await response.json();
 
       if (response.ok) {

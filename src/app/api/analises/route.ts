@@ -60,21 +60,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Canal não encontrado" }, { status: 404 });
     }
 
+    // Buscar categoria se fornecida
+    let category = null;
+    if (categoryId) {
+      category = await Category.findOne({ name: categoryId });
+    }
+
     // Criar análise inicial com status "processing"
     console.log('💾 Criando registro inicial da análise...');
-    const analysis = new Analysis({
+    const analysisData: any = {
       userId: user._id,
       videoId,
       channelId: channel._id,
-      categoryId,
       videoTitle,
       channelName: channel.title,
-      transcription: "",
-      aiSummary: "",
       status: "processing",
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    };
+
+    // Adicionar categoryId apenas se a categoria for encontrada
+    if (category) {
+      analysisData.categoryId = category._id;
+    }
+
+    const analysis = new Analysis(analysisData);
 
     await analysis.save();
     console.log('✅ Registro inicial criado com ID:', analysis._id);

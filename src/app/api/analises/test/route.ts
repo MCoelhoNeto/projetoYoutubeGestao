@@ -4,6 +4,7 @@ import Analysis from "@models/Analysis";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 // @ts-ignore
 import TranscriptClient from 'youtube-transcript-api';
+import mongoose from 'mongoose';
 
 // Inicializar o Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -153,11 +154,11 @@ ${opinion}
       updatedAt: new Date()
     };
 
-    // Adicionar channelId e categoryId apenas se fornecidos
-    if (channelId && channelId !== 'test-channel-id') {
+    // Adicionar channelId e categoryId apenas se forem ObjectIds válidos
+    if (channelId && channelId !== 'test-channel-id' && mongoose.Types.ObjectId.isValid(channelId)) {
       analysisData.channelId = channelId;
     }
-    if (categoryId && categoryId !== 'test-category') {
+    if (categoryId && categoryId !== 'test-category' && mongoose.Types.ObjectId.isValid(categoryId)) {
       analysisData.categoryId = categoryId;
     }
 
