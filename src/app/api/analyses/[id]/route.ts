@@ -7,7 +7,7 @@ import User from "@models/User";
 // GET - Buscar análise específica
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -22,8 +22,10 @@ export async function GET(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
+    const { id } = await params;
+
     const analysis = await Analysis.findOne({ 
-      _id: params.id, 
+      _id: id, 
       userId: user._id 
     })
     .populate("channelId", "title")
@@ -50,7 +52,7 @@ export async function GET(
 // PUT - Refazer análise
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -65,8 +67,10 @@ export async function PUT(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
+    const { id } = await params;
+
     const analysis = await Analysis.findOne({ 
-      _id: params.id, 
+      _id: id, 
       userId: user._id 
     });
 
@@ -75,7 +79,7 @@ export async function PUT(
     }
 
     // Resetar a análise para processamento
-    await Analysis.findByIdAndUpdate(params.id, {
+    await Analysis.findByIdAndUpdate(id, {
       status: "processing",
       transcription: "",
       aiSummary: "",
@@ -83,13 +87,13 @@ export async function PUT(
       updatedAt: new Date()
     });
 
-    console.log(`🔄 Análise ${params.id} resetada para reprocessamento`);
+    console.log(`🔄 Análise ${id} resetada para reprocessamento`);
 
     return NextResponse.json({
       success: true,
       message: "Análise resetada e enfileirada para reprocessamento",
       analysis: {
-        id: params.id,
+        id: id,
         status: "processing"
       }
     });

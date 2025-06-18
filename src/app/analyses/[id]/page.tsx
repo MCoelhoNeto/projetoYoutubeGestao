@@ -46,11 +46,16 @@ export default function AnalysisDetailPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showFullTranscription, setShowFullTranscription] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const router = useRouter();
   const params = useParams();
   const analysisId = params.id as string;
 
   const fetchAnalysis = async () => {
+    // Evitar múltiplas chamadas simultâneas
+    if (fetching) return;
+    
+    setFetching(true);
     setLoading(true);
     try {
       const res = await fetch(`/api/analyses/${analysisId}`);
@@ -70,6 +75,7 @@ export default function AnalysisDetailPage() {
       router.push("/analyses");
     } finally {
       setLoading(false);
+      setFetching(false);
     }
   };
 
@@ -118,12 +124,15 @@ export default function AnalysisDetailPage() {
   useEffect(() => {
     if (analysis?.status === "processing") {
       const interval = setInterval(() => {
-        fetchAnalysis();
+        // Só fazer fetch se não estiver já carregando ou fazendo fetch
+        if (!loading && !fetching) {
+          fetchAnalysis();
+        }
       }, 5000); // Atualizar a cada 5 segundos
 
       return () => clearInterval(interval);
     }
-  }, [analysis?.status]);
+  }, [analysis?.status, loading, fetching]);
 
   const getStatusInfo = (status: string) => {
     switch (status) {
