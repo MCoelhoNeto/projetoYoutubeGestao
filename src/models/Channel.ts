@@ -26,6 +26,11 @@ const channelSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
+  socialLinks: {
+    instagram: String,
+    linkedin: String,
+    website: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
