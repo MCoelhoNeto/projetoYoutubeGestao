@@ -1,8 +1,8 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, model, models } from "mongoose";
 
-const analysisSchema = new mongoose.Schema({
+const analysisSchema = new Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
@@ -11,12 +11,12 @@ const analysisSchema = new mongoose.Schema({
     required: true,
   },
   channelId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "Channel",
     required: false,
   },
   categoryId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "Category",
     required: false,
   },
@@ -55,6 +55,8 @@ const analysisSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+}, {
+  timestamps: true
 });
 
 // Atualizar updatedAt antes de salvar
@@ -63,9 +65,4 @@ analysisSchema.pre("save", function (next) {
   next();
 });
 
-// Forçar recriação do modelo para evitar cache
-if (mongoose.models.Analysis) {
-  delete mongoose.models.Analysis;
-}
-
-export default mongoose.model("Analysis", analysisSchema); 
+export default models.Analysis || model('Analysis', analysisSchema); 

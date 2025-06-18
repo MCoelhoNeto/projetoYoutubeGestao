@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
+import { authOptions } from "@auth/[...nextauth]/authOption";
 import { connectDB } from "@lib/mongodb";
 import Analysis from "@models/Analysis";
 import User from "@models/User";
+import mongoose from "mongoose";
 
 // GET - Buscar análise específica
 export async function GET(
@@ -10,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
@@ -23,6 +25,11 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    // Validar se o ID é um ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
+    }
 
     const analysis = await Analysis.findOne({ 
       _id: id, 
@@ -55,7 +62,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
@@ -68,6 +75,11 @@ export async function PUT(
     }
 
     const { id } = await params;
+
+    // Validar se o ID é um ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
+    }
 
     const analysis = await Analysis.findOne({ 
       _id: id, 

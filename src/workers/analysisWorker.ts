@@ -1,8 +1,7 @@
 import { connectDB } from "@lib/mongodb";
 import Analysis from "@models/Analysis";
 import { GoogleGenerativeAI } from '@google/generative-ai';
-// @ts-ignore
-import TranscriptClient from 'youtube-transcript-api';
+import YouTubeTranscriptService from "@lib/youtube-transcript";
 
 // Inicializar o Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -24,30 +23,24 @@ class AnalysisWorker {
 
   async start() {
     if (this.isRunning) {
-      console.log('⚠️ Worker já está rodando');
+      console.log("⚠️ Worker já está rodando");
       return;
     }
 
+    console.log("🚀 Iniciando Analysis Worker...");
     this.isRunning = true;
-    console.log('🚀 Iniciando Analysis Worker...');
-    
     await this.connect();
     this.runLoop();
   }
 
   async stop() {
+    console.log("🛑 Parando Analysis Worker...");
     this.isRunning = false;
-    console.log('🛑 Parando Analysis Worker...');
   }
 
   private async connect() {
-    try {
-      await connectDB();
-      console.log('✅ Worker conectado ao banco de dados');
-    } catch (error) {
-      console.error('❌ Erro ao conectar worker ao banco:', error);
-      throw error;
-    }
+    await connectDB();
+    console.log("✅ Conectado ao MongoDB");
   }
 
   private async runLoop() {
@@ -56,31 +49,25 @@ class AnalysisWorker {
         await this.processPendingAnalyses();
         await this.sleep(this.config.interval);
       } catch (error) {
-        console.error('❌ Erro no loop do worker:', error);
-        await this.sleep(5000); // Espera 5s em caso de erro
+        console.error("❌ Erro no loop do worker:", error);
+        await this.sleep(5000); // Esperar 5s em caso de erro
       }
     }
   }
 
   private async processPendingAnalyses() {
     if (this.processingCount >= this.config.maxConcurrent) {
-      return; // Limite de concorrência atingido
+      return;
     }
 
-    // Buscar análises pendentes
-    const pendingAnalyses = await Analysis.find({ 
-      status: "processing" 
-    }).limit(this.config.maxConcurrent - this.processingCount);
+    const pendingAnalyses = await Analysis.find({ status: "processing" })
+      .limit(this.config.maxConcurrent - this.processingCount)
+      .sort({ createdAt: 1 });
 
-    if (pendingAnalyses.length === 0) {
-      return; // Nenhuma análise pendente
+    for (const analysis of pendingAnalyses) {
+      if (this.processingCount >= this.config.maxConcurrent) break;
+      this.processAnalysis(analysis);
     }
-
-    console.log(`🔍 Encontradas ${pendingAnalyses.length} análises pendentes`);
-
-    // Processar análises em paralelo
-    const promises = pendingAnalyses.map(analysis => this.processAnalysis(analysis));
-    await Promise.allSettled(promises);
   }
 
   private async processAnalysis(analysis: any) {
@@ -88,11 +75,11 @@ class AnalysisWorker {
     console.log(`🔄 Processando análise: ${analysis.videoTitle} (${analysis.videoId})`);
 
     try {
-      // Buscar transcrição
+      // Buscar transcrição com múltiplos métodos
       const transcript = await this.getTranscript(analysis.videoId);
       
       if (!transcript) {
-        await this.updateAnalysisError(analysis._id, "Não foi possível obter a transcrição do vídeo");
+        await this.updateAnalysisError(analysis._id, "Não foi possível obter a transcrição do vídeo. Verifique se o vídeo tem legendas disponíveis.");
         return;
       }
 
@@ -115,33 +102,17 @@ class AnalysisWorker {
   private async getTranscript(videoId: string): Promise<string | null> {
     try {
       console.log(`🔍 Buscando transcrição para: ${videoId}`);
-      const client = new TranscriptClient();
-      await client.ready;
-      const transcriptData = await client.getTranscript(videoId);
       
-      // Processar dados da transcrição
-      let transcript = '';
-      if (transcriptData && transcriptData.tracks && transcriptData.tracks.length > 0) {
-        const track = transcriptData.tracks[0];
-        if (track.transcript && Array.isArray(track.transcript)) {
-          transcript = track.transcript.map((item: any) => item.text || item).join(' ');
-        } else if (typeof track.transcript === 'string') {
-          transcript = track.transcript;
-        }
-      } else if (transcriptData && transcriptData.transcript) {
-        transcript = transcriptData.transcript;
-      } else if (transcriptData && Array.isArray(transcriptData)) {
-        transcript = transcriptData.map(item => item.text || item).join(' ');
-      } else if (typeof transcriptData === 'string') {
-        transcript = transcriptData;
+      // Usar o novo serviço simplificado
+      const transcript = await YouTubeTranscriptService.getTranscript(videoId);
+      
+      if (transcript && transcript.trim()) {
+        console.log(`✅ Transcrição obtida, tamanho: ${transcript.length}`);
+        return transcript;
       }
 
-      if (!transcript.trim()) {
-        return null;
-      }
-
-      console.log(`✅ Transcrição obtida, tamanho: ${transcript.length}`);
-      return transcript;
+      console.log(`❌ Nenhuma transcrição encontrada para: ${videoId}`);
+      return null;
 
     } catch (error) {
       console.error(`❌ Erro ao buscar transcrição para ${videoId}:`, error);
