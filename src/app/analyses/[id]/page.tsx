@@ -22,6 +22,7 @@ import {
   Edit3,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from "lucide-react";
 
 interface Note {
@@ -66,6 +67,7 @@ export default function AnalysisDetailPage() {
   const [newNoteText, setNewNoteText] = useState("");
   const [newNoteType, setNewNoteType] = useState<'resumo' | 'observacao' | 'correlato'>('resumo');
   const [addingNote, setAddingNote] = useState(false);
+  const [deletingNote, setDeletingNote] = useState<number | null>(null);
   const [showNotesDetails, setShowNotesDetails] = useState(true);
   const [showSummaryDetails, setShowSummaryDetails] = useState(true);
   const router = useRouter();
@@ -200,6 +202,32 @@ export default function AnalysisDetailPage() {
       toast.error(error.message || "Erro ao adicionar anotação");
     } finally {
       setAddingNote(false);
+    }
+  };
+
+  const deleteNote = async (noteIndex: number) => {
+    setDeletingNote(noteIndex);
+    
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}?noteIndex=${noteIndex}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao remover anotação");
+      }
+      
+      const result = await res.json();
+      
+      // Após remover, recarregar do banco
+      await fetchAnalysis();
+      toast.success("Anotação removida com sucesso!");
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao remover anotação");
+    } finally {
+      setDeletingNote(null);
     }
   };
 
@@ -481,14 +509,28 @@ export default function AnalysisDetailPage() {
                         <div className="text-gray-400 italic">Nenhuma anotação adicionada ainda.</div>
                       )}
                       {notes.map((note, idx) => (
-                        <div key={idx} className="border-l-4 pl-4 py-2 bg-gray-50 rounded">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-xs font-semibold uppercase text-green-700">
-                              {note.type === 'resumo' && 'Meu resumo'}
-                              {note.type === 'observacao' && 'Observações'}
-                              {note.type === 'correlato' && 'Assuntos correlatos/pesquisar'}
-                            </span>
-                            <span className="text-xs text-gray-500">{new Date(note.createdAt).toLocaleString()}</span>
+                        <div key={idx} className="border-l-4 pl-4 py-2 bg-gray-50 rounded relative group">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs font-semibold uppercase text-green-700">
+                                {note.type === 'resumo' && 'Meu resumo'}
+                                {note.type === 'observacao' && 'Observações'}
+                                {note.type === 'correlato' && 'Assuntos correlatos/pesquisar'}
+                              </span>
+                              <span className="text-xs text-gray-500">{new Date(note.createdAt).toLocaleString()}</span>
+                            </div>
+                            <button
+                              onClick={() => deleteNote(idx)}
+                              disabled={deletingNote === idx}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded"
+                              title="Remover anotação"
+                            >
+                              {deletingNote === idx ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
                           </div>
                           <div className="text-gray-800 whitespace-pre-line">{note.text}</div>
                         </div>

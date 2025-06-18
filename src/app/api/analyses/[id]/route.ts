@@ -225,4 +225,97 @@ export async function PATCH(
       { status: 500 }
     );
   }
+}
+
+// DELETE - Remover anotação específica
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    console.log('DELETE - Iniciando remoção de nota');
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      console.log('DELETE - Usuário não autorizado');
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    await connectDB();
+    console.log('DELETE - Banco conectado');
+
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      console.log('DELETE - Usuário não encontrado');
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const noteIndex = searchParams.get('noteIndex');
+    
+    console.log('DELETE - Removendo nota:', { analysisId: id, noteIndex });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('DELETE - ID inválido');
+      return NextResponse.json({ error: "ID de análise inválido" }, { status: 400 });
+    }
+
+    if (noteIndex === null || isNaN(Number(noteIndex))) {
+      console.log('DELETE - Índice de nota inválido');
+      return NextResponse.json({ error: "Índice de nota inválido" }, { status: 400 });
+    }
+
+    const noteIndexNum = Number(noteIndex);
+
+    // Buscar a análise para verificar se existe e se tem a nota
+    const analysis = await Analysis.findOne({ _id: id, userId: user._id });
+    if (!analysis) {
+      console.log('DELETE - Análise não encontrada');
+      return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
+    }
+
+    if (!analysis.notes || !Array.isArray(analysis.notes)) {
+      console.log('DELETE - Análise não tem notas');
+      return NextResponse.json({ error: "Análise não tem notas" }, { status: 400 });
+    }
+
+    if (noteIndexNum < 0 || noteIndexNum >= analysis.notes.length) {
+      console.log('DELETE - Índice de nota fora do range');
+      return NextResponse.json({ error: "Índice de nota inválido" }, { status: 400 });
+    }
+
+    // Remover a nota específica usando splice no array
+    const updatedNotes = [...analysis.notes];
+    updatedNotes.splice(noteIndexNum, 1);
+    
+    const updateResult = await Analysis.updateOne(
+      { _id: id, userId: user._id },
+      {
+        $set: { 
+          notes: updatedNotes,
+          updatedAt: new Date() 
+        }
+      }
+    );
+
+    console.log('DELETE - Resultado da remoção:', updateResult);
+
+    if (updateResult.matchedCount === 0) {
+      console.log('DELETE - Análise não encontrada na atualização');
+      return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
+    }
+
+    console.log('DELETE - Nota removida com sucesso');
+    return NextResponse.json({
+      success: true,
+      message: "Nota removida com sucesso"
+    });
+
+  } catch (error) {
+    console.log("Erro ao remover anotação:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
 } 
