@@ -75,6 +75,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('🔄 PUT - Iniciando refazer análise');
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -88,6 +89,7 @@ export async function PUT(
     }
 
     const { id } = await params;
+    console.log('🔄 PUT - ID da análise:', id);
 
     // Validar se o ID é um ObjectId válido
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -103,28 +105,38 @@ export async function PUT(
       return NextResponse.json({ error: "Análise não encontrada" }, { status: 404 });
     }
 
+    console.log('🔄 PUT - Análise encontrada, status atual:', analysis.status);
+
     // Resetar a análise para processamento
-    await Analysis.findByIdAndUpdate(id, {
+    const updatedAnalysis = await Analysis.findByIdAndUpdate(id, {
       status: "processing",
       transcription: "",
       aiSummary: "",
       errorMessage: "",
       updatedAt: new Date()
-    });
+    }, { new: true });
 
-    console.log(`🔄 Análise ${id} resetada para reprocessamento`);
+    console.log(`🔄 PUT - Análise ${id} resetada para reprocessamento`);
+    console.log(`🔄 PUT - Novo status: ${updatedAnalysis.status}`);
+
+    // Verificar se há análises pendentes
+    const pendingCount = await Analysis.countDocuments({ status: "processing" });
+    console.log(`🔄 PUT - Total de análises pendentes: ${pendingCount}`);
 
     return NextResponse.json({
       success: true,
       message: "Análise resetada e enfileirada para reprocessamento",
       analysis: {
         id: id,
-        status: "processing"
-      }
+        status: "processing",
+        videoTitle: analysis.videoTitle,
+        videoId: analysis.videoId
+      },
+      pendingCount: pendingCount
     });
 
   } catch (error) {
-    console.log("Erro ao refazer análise:", error);
+    console.error("❌ Erro ao refazer análise:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

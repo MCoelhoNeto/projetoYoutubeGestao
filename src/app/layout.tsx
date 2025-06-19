@@ -15,7 +15,16 @@ export const metadata: Metadata = {
 // Inicializar o worker quando o servidor iniciar
 if (typeof window === 'undefined') {
   // Só executar no servidor
-  startAnalysisWorker();
+  console.log('🚀 Layout - Iniciando worker...');
+  console.log('🚀 Layout - ENABLE_WORKER:', process.env.ENABLE_WORKER);
+  console.log('🚀 Layout - NODE_ENV:', process.env.NODE_ENV);
+  
+  try {
+    startAnalysisWorker();
+    console.log('✅ Layout - Worker iniciado com sucesso');
+  } catch (error) {
+    console.error('❌ Layout - Erro ao iniciar worker:', error);
+  }
 }
 
 export default function RootLayout({

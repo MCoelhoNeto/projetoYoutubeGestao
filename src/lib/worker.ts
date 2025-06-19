@@ -3,23 +3,38 @@ import { getAnalysisWorker } from '../workers/analysisWorker';
 let workerStarted = false;
 
 export function startAnalysisWorker() {
+  console.log('🔧 startAnalysisWorker - Iniciando...');
+  console.log('🔧 startAnalysisWorker - workerStarted:', workerStarted);
+  console.log('🔧 startAnalysisWorker - ENABLE_WORKER:', process.env.ENABLE_WORKER);
+  console.log('🔧 startAnalysisWorker - NODE_ENV:', process.env.NODE_ENV);
+  
   if (workerStarted) {
     console.log('⚠️ Worker já foi iniciado');
     return;
   }
 
-  // Só iniciar o worker em produção ou quando explicitamente solicitado
-  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_WORKER === 'true') {
+  // Iniciar o worker se ENABLE_WORKER estiver definido ou em produção
+  if (process.env.ENABLE_WORKER === 'true' || process.env.NODE_ENV === 'production') {
     console.log('🚀 Iniciando Analysis Worker...');
     
-    const worker = getAnalysisWorker();
-    worker.start().catch((error: Error) => {
-      console.error('❌ Erro ao iniciar worker:', error);
-    });
-    
-    workerStarted = true;
+    try {
+      const worker = getAnalysisWorker();
+      console.log('🔧 Worker obtido, iniciando...');
+      
+      worker.start().catch((error: Error) => {
+        console.error('❌ Erro ao iniciar worker:', error);
+      });
+      
+      workerStarted = true;
+      console.log('✅ Worker marcado como iniciado');
+    } catch (error) {
+      console.error('❌ Erro ao obter ou iniciar worker:', error);
+    }
   } else {
-    console.log('⏸️ Worker não iniciado (modo desenvolvimento)');
+    console.log('⏸️ Worker não iniciado. Defina ENABLE_WORKER=true no .env.local para habilitar');
+    console.log('⏸️ Condições não atendidas:');
+    console.log('⏸️ - ENABLE_WORKER === "true":', process.env.ENABLE_WORKER === 'true');
+    console.log('⏸️ - NODE_ENV === "production":', process.env.NODE_ENV === 'production');
   }
 }
 
