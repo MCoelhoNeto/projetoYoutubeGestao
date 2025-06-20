@@ -168,6 +168,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const channelId = searchParams.get("channelId");
     const categoryId = searchParams.get("categoryId");
+    const videoId = searchParams.get("videoId");
 
     const query: any = { userId: user._id };
     if (status) {
@@ -178,6 +179,9 @@ export async function GET(request: NextRequest) {
     }
     if (categoryId) {
       query.categoryId = categoryId;
+    }
+    if (videoId) {
+      query.videoId = videoId;
     }
 
     const analyses = await Analysis.find(query)

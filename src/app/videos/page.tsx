@@ -98,13 +98,18 @@ export default function VideosPage() {
 
   const verificarAnalisesExistentes = async (dadosVideos: Categoria[]) => {
     try {
-      const res = await fetch("/api/analyses");
-      if (res.ok) {
-        const { analyses } = await res.json();
-        const videoIdsAnalisados = analyses
-          .filter((a: any) => a.status === "completed")
-          .map((a: any) => a.videoId);
+      // Extrair todos os videoIds dos dados
+      const todosVideoIds = dadosVideos.flatMap(cat =>
+        cat.canais.flatMap(canal => canal.videos.map(v => v.videoId))
+      );
 
+      if (todosVideoIds.length === 0) return;
+
+      // Usar a nova API eficiente para buscar apenas os videoIds analisados
+      const res = await fetch(`/api/analyses/find-by-video?videoIds=${todosVideoIds.join(',')}`);
+      if (res.ok) {
+        const { videoIds } = await res.json();
+        
         // Atualizar status dos vídeos que já foram analisados
         setDados((prev) =>
           prev.map((cat) => ({
@@ -113,7 +118,7 @@ export default function VideosPage() {
               ...can,
               videos: can.videos.map((v) => ({
                 ...v,
-                status: videoIdsAnalisados.includes(v.videoId) ? "analisado" as "analisado" : v.status,
+                status: videoIds.includes(v.videoId) ? "analisado" as "analisado" : v.status,
               })),
             })),
           })) as Categoria[]
@@ -198,8 +203,17 @@ export default function VideosPage() {
         );
       } else {
         if (res.status === 409) {
-          // Análise já existe
-          toast.info(`Análise já existe para: ${video.title}`);
+          // Análise já existe - mostrar toast informativo
+          toast.info(`Análise já existe para: ${video.title}`, {
+            action: {
+              label: "Ver Análise",
+              onClick: () => {
+                // Navegar para a página de análises com filtro para este vídeo
+                router.push(`/analyses?videoId=${video.videoId}`);
+              }
+            }
+          });
+          
           // Atualizar o status do vídeo para "analisado"
           setDados((prev) =>
             prev.map((cat) => ({

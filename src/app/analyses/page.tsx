@@ -123,7 +123,7 @@ export default function AnalysesPage() {
     }
   };
 
-  const fetchAnalyses = async (page = 1, status = "all", channel = "all") => {
+  const fetchAnalyses = async (page = 1, status = "all", channel = "all", videoId = "") => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -137,6 +137,10 @@ export default function AnalysesPage() {
 
       if (channel !== "all") {
         params.append("channelId", channel);
+      }
+
+      if (videoId) {
+        params.append("videoId", videoId);
       }
 
       const res = await fetch(`/api/analyses?${params}`);
@@ -176,9 +180,13 @@ export default function AnalysesPage() {
   };
 
   useEffect(() => {
+    // Verificar se há videoId na URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoIdFromUrl = urlParams.get('videoId');
+    
     fetchChannels();
     fetchCategories();
-    fetchAnalyses();
+    fetchAnalyses(1, "all", "all", videoIdFromUrl || "");
     fetchWorkerStatus();
   }, []);
 
@@ -196,7 +204,7 @@ export default function AnalysesPage() {
     fetchAnalyses(page, statusFilter, channelFilter);
   };
 
-  // Extrair videoId da URL do YouTube
+  // Extrair videoId da URL
   const extractVideoId = (url: string): string | null => {
     const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
     const match = url.match(regex);
@@ -276,7 +284,7 @@ export default function AnalysesPage() {
       setVideoInfo(null);
       
       // Recarregar análises
-      fetchAnalyses();
+      fetchAnalyses(1, statusFilter, channelFilter);
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar análise");
     } finally {
