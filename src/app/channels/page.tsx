@@ -51,6 +51,7 @@ interface Channel {
   maxAnalysis?: number;
   lastAnalysis?: string;
   categoryId?: string;
+  listInVideos?: boolean;
   socialLinks?: {
     instagram?: string;
     linkedin?: string;
@@ -62,6 +63,7 @@ interface Category {
   _id: string;
   name: string;
   color?: string;
+  listInVideos?: boolean;
   channels: Channel[];
 }
 
@@ -258,26 +260,45 @@ export default function ChannelsListPage() {
     switch (status) {
       case "fresh":
         return {
-          icon: CheckCircle,
-          color: "text-green-500",
-          bg: "bg-green-100",
           text: "Atualizado",
+          color: "text-green-700",
+          bg: "bg-green-100",
+          icon: CheckCircle,
         };
       case "stale":
         return {
-          icon: Clock,
-          color: "text-yellow-500",
-          bg: "bg-yellow-100",
           text: "Desatualizado",
+          color: "text-yellow-700",
+          bg: "bg-yellow-100",
+          icon: Clock,
         };
-      case "empty":
       default:
         return {
-          icon: AlertTriangle,
-          color: "text-gray-400",
-          bg: "bg-gray-100",
           text: "Vazio",
+          color: "text-gray-700",
+          bg: "bg-gray-100",
+          icon: AlertTriangle,
         };
+    }
+  };
+
+  const getVisibilityBadge = (isVisible: boolean) => {
+    if (isVisible) {
+      return {
+        text: "Visível",
+        color: "text-green-700",
+        bg: "bg-green-100",
+        border: "border-green-200",
+        icon: Eye,
+      };
+    } else {
+      return {
+        text: "Oculto",
+        color: "text-red-700",
+        bg: "bg-red-100",
+        border: "border-red-200",
+        icon: Eye,
+      };
     }
   };
 
@@ -488,9 +509,21 @@ export default function ChannelsListPage() {
                               <h2 className="text-lg font-semibold text-gray-900">
                                 {category.name}
                               </h2>
-                              <p className="text-sm text-gray-500">
-                                {category.channels.length} canais
-                              </p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm text-gray-500">
+                                  {category.channels.length} canais
+                                </p>
+                                {/* Badge de visibilidade da categoria */}
+                                {(() => {
+                                  const visibilityInfo = getVisibilityBadge(category.listInVideos !== false);
+                                  return (
+                                    <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border font-medium ${visibilityInfo.bg} ${visibilityInfo.border} ${visibilityInfo.color}`}>
+                                      <visibilityInfo.icon className="w-3 h-3 mr-1" />
+                                      <span>{visibilityInfo.text}</span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </div>
                           {expandedCategories.has(category._id) ? (
@@ -560,9 +593,21 @@ export default function ChannelsListPage() {
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between">
                                               <div>
-                                                <h4 className="font-semibold text-gray-900 mb-1">
-                                                  {channel.title}
-                                                </h4>
+                                                <div className="flex items-center space-x-2 mb-1">
+                                                  <h4 className="font-semibold text-gray-900">
+                                                    {channel.title}
+                                                  </h4>
+                                                  {/* Badge de visibilidade do canal */}
+                                                  {(() => {
+                                                    const visibilityInfo = getVisibilityBadge(channel.listInVideos !== false);
+                                                    return (
+                                                      <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border font-medium ${visibilityInfo.bg} ${visibilityInfo.border} ${visibilityInfo.color}`}>
+                                                        <visibilityInfo.icon className="w-3 h-3 mr-1" />
+                                                        <span>{visibilityInfo.text}</span>
+                                                      </div>
+                                                    );
+                                                  })()}
+                                                </div>
                                                 <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                                                   {channel.description ||
                                                     "Sem descrição disponível"}
