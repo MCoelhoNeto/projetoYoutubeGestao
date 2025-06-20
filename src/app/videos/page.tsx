@@ -111,8 +111,8 @@ export default function VideosPage() {
         const { videoIds } = await res.json();
         
         // Atualizar status dos vídeos que já foram analisados
-        setDados((prev) =>
-          prev.map((cat) => ({
+        setDados((prev) => {
+          const novosDados = prev.map((cat) => ({
             ...cat,
             canais: cat.canais.map((can) => ({
               ...can,
@@ -121,8 +121,15 @@ export default function VideosPage() {
                 status: videoIds.includes(v.videoId) ? "analisado" as "analisado" : v.status,
               })),
             })),
-          })) as Categoria[]
-        );
+          })) as Categoria[];
+          
+          // Atualizar também categoriasFiltradas
+          setCategoriasFiltradas(novosDados);
+          
+          return novosDados;
+        });
+      } else {
+        console.error('❌ Erro na API find-by-video:', res.status, res.statusText);
       }
     } catch (error) {
       console.error("Erro ao verificar análises existentes:", error);
@@ -190,8 +197,8 @@ export default function VideosPage() {
       if (res.ok) {
         toast.success(`Análise iniciada: ${video.title}`);
         // Atualizar o status do vídeo para "analisado" imediatamente
-        setDados((prev) =>
-          prev.map((cat) => ({
+        setDados((prev) => {
+          const novosDados = prev.map((cat) => ({
             ...cat,
             canais: cat.canais.map((can) => ({
               ...can,
@@ -199,8 +206,13 @@ export default function VideosPage() {
                 v.videoId === video.videoId ? { ...v, status: "analisado" as "analisado" } : v
               ),
             })),
-          })) as Categoria[]
-        );
+          })) as Categoria[];
+          
+          // Atualizar também categoriasFiltradas
+          setCategoriasFiltradas(novosDados);
+          
+          return novosDados;
+        });
       } else {
         if (res.status === 409) {
           // Análise já existe - mostrar toast informativo
@@ -215,8 +227,8 @@ export default function VideosPage() {
           });
           
           // Atualizar o status do vídeo para "analisado"
-          setDados((prev) =>
-            prev.map((cat) => ({
+          setDados((prev) => {
+            const novosDados = prev.map((cat) => ({
               ...cat,
               canais: cat.canais.map((can) => ({
                 ...can,
@@ -224,8 +236,13 @@ export default function VideosPage() {
                   v.videoId === video.videoId ? { ...v, status: "analisado" as "analisado" } : v
                 ),
               })),
-            })) as Categoria[]
-          );
+            })) as Categoria[];
+            
+            // Atualizar também categoriasFiltradas
+            setCategoriasFiltradas(novosDados);
+            
+            return novosDados;
+          });
         } else {
           toast.error(json.error || "Erro ao iniciar análise");
         }
@@ -524,6 +541,15 @@ export default function VideosPage() {
                                         Analisar
                                       </button>
                                     )}
+                                    {video.status === "analisado" && (
+                                      <button
+                                        onClick={() => router.push(`/analyses?videoId=${video.videoId}`)}
+                                        className="inline-flex items-center px-2 py-1 border border-blue-300 text-xs font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors whitespace-nowrap"
+                                      >
+                                        <Eye className="w-3 h-3 mr-1" />
+                                        Ver Análise
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() =>
                                         window.open(
@@ -601,15 +627,26 @@ export default function VideosPage() {
                                     {video.status}
                                   </span>
 
-                                  {video.status === "pendente" && (
-                                    <button
-                                      onClick={() => enviarParaAnalise(video, canal.canalId, categoria.categoriaNome)}
-                                      className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap flex-shrink-0"
-                                    >
-                                      <Send className="w-3 h-3 mr-1" />
-                                      Analisar
-                                    </button>
-                                  )}
+                                  <div className="flex items-center space-x-2">
+                                    {video.status === "pendente" && (
+                                      <button
+                                        onClick={() => enviarParaAnalise(video, canal.canalId, categoria.categoriaNome)}
+                                        className="inline-flex items-center px-2 py-1 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 transition-colors whitespace-nowrap flex-shrink-0"
+                                      >
+                                        <Send className="w-3 h-3 mr-1" />
+                                        Analisar
+                                      </button>
+                                    )}
+                                    {video.status === "analisado" && (
+                                      <button
+                                        onClick={() => router.push(`/analyses?videoId=${video.videoId}`)}
+                                        className="inline-flex items-center px-2 py-1 border border-blue-300 text-xs font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors whitespace-nowrap flex-shrink-0"
+                                      >
+                                        <Eye className="w-3 h-3 mr-1" />
+                                        Ver Análise
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             )}
