@@ -369,13 +369,22 @@ export default function AnalysesPage() {
               </div>
               
               {/* Botão Nova Análise */}
-              <button
-                onClick={() => setShowModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Análise
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => router.push("/analyses/search")}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Busca Avançada
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Análise
+                </button>
+              </div>
             </div>
           </div>
         </div>
