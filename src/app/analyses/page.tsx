@@ -241,11 +241,6 @@ export default function AnalysesPage() {
       return;
     }
 
-    if (!selectedChannel) {
-      toast.error("Selecione um canal");
-      return;
-    }
-
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
       toast.error("URL do YouTube inválida");
@@ -262,7 +257,7 @@ export default function AnalysesPage() {
         body: JSON.stringify({
           videoId,
           videoTitle: videoInfo?.title || 'Vídeo do YouTube',
-          channelId: selectedChannel,
+          channelId: selectedChannel || undefined,
           categoryId: selectedCategory || undefined,
         }),
       });
@@ -718,14 +713,14 @@ export default function AnalysesPage() {
                   {/* Canal */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Canal
+                      Canal (Opcional)
                     </label>
                     <select
                       value={selectedChannel}
                       onChange={(e) => setSelectedChannel(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     >
-                      <option value="">Selecione um canal</option>
+                      <option value="">Sem canal específico</option>
                       {channels.map((channel) => (
                         <option key={channel._id} value={channel._id}>
                           {channel.title}
@@ -767,7 +762,7 @@ export default function AnalysesPage() {
                   </button>
                   <button
                     onClick={handleCreateAnalysis}
-                    disabled={!videoUrl.trim() || !selectedChannel || isSubmitting}
+                    disabled={!videoUrl.trim() || isSubmitting}
                     className="px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                   >
                     {isSubmitting ? (

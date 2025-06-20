@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Dados recebidos:', { videoId, videoTitle, channelId, categoryId });
 
-    if (!videoId || !videoTitle || !channelId || !categoryId) {
+    if (!videoId || !videoTitle) {
       return NextResponse.json(
-        { error: 'videoId, videoTitle, channelId e categoryId são obrigatórios' },
+        { error: 'videoId e videoTitle são obrigatórios' },
         { status: 400 }
       );
     }
@@ -53,10 +53,16 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
-    // Buscar informações do canal
-    const channel = await Channel.findById(channelId);
-    if (!channel) {
-      return NextResponse.json({ error: "Canal não encontrado" }, { status: 404 });
+    // Buscar informações do canal se fornecido
+    let channel = null;
+    let channelName = "Canal não especificado";
+    
+    if (channelId) {
+      channel = await Channel.findById(channelId);
+      if (!channel) {
+        return NextResponse.json({ error: "Canal não encontrado" }, { status: 404 });
+      }
+      channelName = channel.title;
     }
 
     // Buscar categoria se fornecida
@@ -85,15 +91,19 @@ export async function POST(request: NextRequest) {
     const analysisData: any = {
       userId: user._id,
       videoId,
-      channelId: channel._id,
       videoTitle,
-      channelName: channel.title,
+      channelName,
       transcription: "",
       aiSummary: "",
       status: "processing",
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // Adicionar channelId apenas se o canal for fornecido
+    if (channel) {
+      analysisData.channelId = channel._id;
+    }
 
     // Adicionar categoryId apenas se a categoria for encontrada
     if (category) {
