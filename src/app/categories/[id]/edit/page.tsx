@@ -69,6 +69,7 @@ interface Category {
   channels?: Channel[];
   createdAt?: string;
   updatedAt?: string;
+  listInVideos?: boolean;
 }
 
 export default function EditCategoryPage() {
@@ -89,6 +90,7 @@ export default function EditCategoryPage() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [targetCategoryId, setTargetCategoryId] = useState("");
+  const [listInVideos, setListInVideos] = useState(true);
 
   // ✅ Adicionado: ícones de status de cache dos canais
   const getCacheStatusIcon = (status?: string) => {
@@ -118,8 +120,9 @@ export default function EditCategoryPage() {
         setColor(categoryData.color || "#3B82F6");
         setTags(categoryData.tags || "");
         setIcon(categoryData.icon || "");
+        setListInVideos(categoryData.listInVideos === undefined ? true : categoryData.listInVideos);
         setChannels(categoryData.channels || []);
-        setAllCategories(allCats.filter((c) => c._id !== categoryId));
+        setAllCategories(allCats.filter((c: Category) => c._id !== categoryId));
       } catch (err: any) {
         toast.error("Erro ao carregar categoria");
         router.push("/categories");
@@ -130,19 +133,42 @@ export default function EditCategoryPage() {
     loadData();
   }, [categoryId, router]);
 
+  // Debug: monitorar mudanças no estado listInVideos
+  useEffect(() => {
+    console.log('Estado listInVideos da categoria mudou para:', listInVideos);
+  }, [listInVideos]);
+
   // ✅ Atualizar categoria existente
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Nome obrigatório");
     setLoading(true);
     try {
-      await CategoryService.update(categoryId, {
-        name,
-        description,
-        color,
-        tags,
-        icon,
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          color,
+          tags,
+          icon,
+        }),
       });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('Resposta da atualização da categoria:', data);
+      } catch (error) {
+        console.error('Erro ao fazer parse da resposta:', error);
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao atualizar categoria");
+      }
+
       toast.success("Categoria atualizada");
       router.push("/categories");
     } catch (err: any) {
@@ -201,6 +227,44 @@ export default function EditCategoryPage() {
       }
     } else {
       router.push("/categories");
+    }
+  };
+
+  const handleToggleListInVideos = async (newValue: boolean) => {
+    try {
+      console.log('=== DEBUG TOGGLE CATEGORIA ===');
+      console.log('Valor atual do listInVideos:', listInVideos);
+      console.log('Novo valor solicitado:', newValue);
+      
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listInVideos: newValue
+        }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('Resposta da atualização da categoria:', data);
+      } catch (error) {
+        console.error('Erro ao fazer parse da resposta:', error);
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao atualizar listInVideos");
+      }
+
+      // Atualizar o estado local
+      console.log('Atualizando estado local da categoria de', listInVideos, 'para', newValue);
+      setListInVideos(newValue);
+
+      toast.success(`Categoria ${newValue ? 'ativada' : 'desativada'} na lista de vídeos`);
+    } catch (error) {
+      console.error("Erro ao atualizar listInVideos da categoria:", error);
+      toast.error("Erro ao atualizar configuração");
     }
   };
 
@@ -366,6 +430,34 @@ export default function EditCategoryPage() {
                         Ou escolha uma cor personalizada
                       </span>
                     </div>
+                  </div>
+
+                  {/* List in Videos Toggle */}
+                  <div>
+                    <label className="flex items-center justify-between">
+                      <span className="block text-sm font-medium text-gray-700">
+                        Listar no Vídeos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleListInVideos(!listInVideos)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          listInVideos ? 'bg-blue-600' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            listInVideos ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {listInVideos 
+                        ? "Esta categoria aparecerá na lista de vídeos" 
+                        : "Esta categoria não aparecerá na lista de vídeos"
+                      }
+                    </p>
                   </div>
 
                   {/* Action Buttons */}

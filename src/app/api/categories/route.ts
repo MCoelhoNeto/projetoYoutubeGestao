@@ -37,7 +37,8 @@ export async function GET() {
           description: cat.description,
           color: cat.color,
           channelsCount: count,
-          createdAt: cat.createdAt
+          createdAt: cat.createdAt,
+          listInVideos: cat.listInVideos === undefined ? true : cat.listInVideos
         };
       })
     );

@@ -19,9 +19,15 @@ export async function GET(_: NextRequest) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    const categories = await Category.find({ userId: user._id });
+    const categories = await Category.find({ 
+      userId: user._id,
+      listInVideos: { $ne: false } // Inclui true e undefined (padrão)
+    });
     const categoryIds = categories.map(cat => cat._id);
-    const allChannels = await Channel.find({ categoryId: { $in: categoryIds } });
+    const allChannels = await Channel.find({ 
+      categoryId: { $in: categoryIds },
+      listInVideos: { $ne: false } // Inclui true e undefined (padrão)
+    });
 
     // Agrupar os canais por categoria
     const groupedChannels: Record<string, any[]> = {};
@@ -44,7 +50,8 @@ export async function GET(_: NextRequest) {
         analysisCount: channel.analysisCount,
         maxAnalysis: channel.maxAnalysis,
         lastAnalysis: channel.lastAnalysis,
-        socialLinks: channel.socialLinks || {}
+        socialLinks: channel.socialLinks || {},
+        listInVideos: channel.listInVideos === undefined ? true : channel.listInVideos
       });
     }
 
@@ -52,6 +59,7 @@ export async function GET(_: NextRequest) {
       _id: cat._id.toString(),
       name: cat.name,
       color: cat.color,
+      listInVideos: cat.listInVideos === undefined ? true : cat.listInVideos,
       channels: groupedChannels[cat._id.toString()] || []
     }));
 

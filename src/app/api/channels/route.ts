@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const channels = await Channel.find({ userId: token.userId })
-      .select('_id title channelId')
+      .select('_id title channelId listInVideos')
       .sort({ title: 1 });
 
     return NextResponse.json({ success: true, channels });

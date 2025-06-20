@@ -17,11 +17,12 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    // ✅ Filtra apenas canais que têm categoria definida
+    // ✅ Filtra apenas canais que têm categoria definida E listInVideos = true
     const canais = await Channel.find({
       userId: token.userId,
-      categoryId: { $ne: null }
-    }).lean();
+      categoryId: { $ne: null },
+      listInVideos: { $ne: false } // Inclui true e undefined (padrão)
+    }).lean() as any[];
 
     const categoriasMap = new Map<string, { categoriaNome: string; canais: any[] }>();
     const today = dayjs().format('YYYY-MM-DD');
@@ -33,16 +34,22 @@ export async function GET(req: NextRequest) {
       // ❌ Se não tiver categoria, pula
       if (!categoriaId) continue;
 
-      // ✅ Busca a categoria e ignora se não existir
-      const categoria = await Category.findById(categoriaId).lean();
+      // ✅ Busca a categoria e ignora se não existir OU se listInVideos = false
+      const categoria = await Category.findById(categoriaId).lean() as any;
       if (!categoria) continue;
+      
+      // ✅ Verifica se a categoria deve aparecer na lista de vídeos
+      if (categoria.listInVideos === false) {
+        console.log(`⏭️ Categoria ${categoria.name} ignorada (listInVideos = false)`);
+        continue;
+      }
 
       // ✅ Verifica cache
       const cache = await VideoCache.findOne({
         userId: token.userId,
         channelId: canal.youtubeChannelId,
         date: today
-      }).lean();
+      }).lean() as any;
 
       let videos = [];
 
@@ -58,7 +65,7 @@ export async function GET(req: NextRequest) {
         let ytJson;
         try {
           ytJson = await res.json();
-        } catch (e) {
+        } catch (e: any) {
           return NextResponse.json({ error: 'Erro ao processar resposta do YouTube', erro: { message: e.message } }, { status: 502 });
         }
 

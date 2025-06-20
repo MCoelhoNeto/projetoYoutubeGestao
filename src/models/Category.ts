@@ -8,6 +8,7 @@ const categorySchema = new Schema({
   color: { type: String, default: '#3B82F6' },
   tags: { type: String, default: '' },
   icon: { type: String, default: '' },
+  listInVideos: { type: Boolean, default: true },
   channels: [{ type: Schema.Types.ObjectId, ref: 'Channel' }],
   channelsCount: { type: Number, default: 0 }
 }, {

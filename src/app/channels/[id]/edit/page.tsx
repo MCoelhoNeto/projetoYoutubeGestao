@@ -37,6 +37,7 @@ interface Channel {
   totalVideos?: number;
   thumbnail?: string;
   categoryId?: string;
+  listInVideos?: boolean;
   socialLinks?: {
     instagram?: string;
     linkedin?: string;
@@ -76,6 +77,7 @@ function EditChannelContent() {
     title: "",
     description: "",
     categoryId: "",
+    listInVideos: true,
     socialLinks: {
       instagram: "",
       linkedin: "",
@@ -85,11 +87,14 @@ function EditChannelContent() {
 
   // Carregar dados do canal
   useEffect(() => {
-    if (channelId) {
-      loadChannel();
-      loadCategories();
-    }
+    loadChannel();
+    loadCategories();
   }, [channelId]);
+
+  // Debug: monitorar mudanças no estado listInVideos
+  useEffect(() => {
+    console.log('Estado formData.listInVideos mudou para:', formData.listInVideos);
+  }, [formData.listInVideos]);
 
   const loadChannel = async () => {
     try {
@@ -98,11 +103,19 @@ function EditChannelContent() {
         throw new Error("Canal não encontrado");
       }
       const data = await response.json();
+      console.log('Dados do canal carregados:', data.channel);
+      console.log('Valor listInVideos do banco:', data.channel.listInVideos);
+      console.log('Tipo do valor listInVideos:', typeof data.channel.listInVideos);
+      
       setChannel(data.channel);
+      const listInVideosValue = data.channel.listInVideos === undefined ? true : data.channel.listInVideos;
+      console.log('Valor final para o estado:', listInVideosValue);
+      
       setFormData({
         title: data.channel.title || "",
         description: data.channel.description || "",
         categoryId: data.channel.categoryId || "",
+        listInVideos: listInVideosValue,
         socialLinks: {
           instagram: data.channel.socialLinks?.instagram || "",
           linkedin: data.channel.socialLinks?.linkedin || "",
@@ -129,11 +142,57 @@ function EditChannelContent() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleToggleListInVideos = async (newValue: boolean) => {
+    try {
+      console.log('=== DEBUG TOGGLE ===');
+      console.log('Valor atual do formData.listInVideos:', formData.listInVideos);
+      console.log('Novo valor solicitado:', newValue);
+      
+      const response = await fetch(`/api/channels/${channelId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listInVideos: newValue
+        }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('Resposta da atualização:', data);
+      } catch (error) {
+        console.error('Erro ao fazer parse da resposta:', error);
+        throw new Error("Resposta inválida do servidor");
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Erro ao atualizar listInVideos");
+      }
+
+      // Atualizar o estado local
+      console.log('Atualizando estado local de', formData.listInVideos, 'para', newValue);
+      setFormData(prev => {
+        console.log('Estado anterior:', prev.listInVideos);
+        const newState = {
+          ...prev,
+          listInVideos: newValue
+        };
+        console.log('Novo estado:', newState.listInVideos);
+        return newState;
+      });
+
+      toast.success(`Canal ${newValue ? 'ativado' : 'desativado'} na lista de vídeos`);
+    } catch (error) {
+      console.error("Erro ao atualizar listInVideos:", error);
+      toast.error("Erro ao atualizar configuração");
+    }
   };
 
   const handleSocialLinkChange = (platform: string, value: string) => {
@@ -160,6 +219,7 @@ function EditChannelContent() {
           title: formData.title,
           description: formData.description,
           categoryId: formData.categoryId,
+          listInVideos: formData.listInVideos,
           socialLinks: formData.socialLinks,
         }),
       });
@@ -372,6 +432,33 @@ function EditChannelContent() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center justify-between">
+                      <span className="block text-sm font-medium text-gray-700">
+                        Listar no Vídeos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleListInVideos(!formData.listInVideos)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+                          formData.listInVideos ? 'bg-red-600' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            formData.listInVideos ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {formData.listInVideos 
+                        ? "Este canal aparecerá na lista de vídeos" 
+                        : "Este canal não aparecerá na lista de vídeos"
+                      }
+                    </p>
                   </div>
                 </div>
               </div>

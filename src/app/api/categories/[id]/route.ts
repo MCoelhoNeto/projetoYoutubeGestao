@@ -64,6 +64,7 @@ const channels = await Channel.find({ categoryId: category._id });
           analysisCount: ch.analysisCount || 0,
           maxAnalysis: ch.maxAnalysis || 10,
         })),
+        listInVideos: category.listInVideos === undefined ? true : category.listInVideos,
       },
     });
 
@@ -186,6 +187,101 @@ export async function DELETE(
     });
   } catch (error) {
     console.error("❌ Erro ao deletar categoria:", error);
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Atualizar campos específicos
+export async function PATCH(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { params } = context;
+
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    console.log('PATCH - Dados recebidos:', body);
+
+    await connectDB();
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const category = await Category.findOne({
+      _id: new mongoose.Types.ObjectId(params.id),
+      userId: user._id,
+    });
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Categoria não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    console.log('PATCH - Categoria antes da atualização:', {
+      _id: category._id,
+      name: category.name,
+      listInVideos: category.listInVideos
+    });
+
+    // Atualizar apenas os campos fornecidos
+    Object.keys(body).forEach(key => {
+      if (body[key] !== undefined) {
+        (category as any)[key] = body[key];
+      }
+    });
+
+    console.log('PATCH - Categoria após atualização:', {
+      _id: category._id,
+      name: category.name,
+      listInVideos: category.listInVideos
+    });
+
+    await category.save();
+
+    // Se estamos atualizando listInVideos, também atualizar os canais relacionados
+    if (body.listInVideos !== undefined) {
+      console.log('PATCH - Atualizando canais relacionados também');
+      
+      const channels = await Channel.find({ categoryId: category._id, userId: user._id });
+      console.log(`PATCH - Encontrados ${channels.length} canais para atualizar`);
+      
+      for (const channel of channels) {
+        channel.listInVideos = body.listInVideos;
+        await channel.save();
+        console.log('PATCH - Canal atualizado:', {
+          _id: channel._id,
+          title: channel.title,
+          listInVideos: channel.listInVideos
+        });
+      }
+    }
+
+    console.log('PATCH - Categoria salva com sucesso');
+
+    return NextResponse.json({
+      success: true,
+      message: "Campo atualizado com sucesso",
+      category: {
+        _id: category._id.toString(),
+        listInVideos: category.listInVideos === undefined ? true : category.listInVideos
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao atualizar campo da categoria:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
