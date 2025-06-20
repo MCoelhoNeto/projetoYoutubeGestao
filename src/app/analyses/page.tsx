@@ -22,12 +22,22 @@ import {
   Eye,
   Brain,
   FileText,
+  Plus,
+  X,
+  Youtube,
+  Folder,
 } from "lucide-react";
 
 interface Channel {
   _id: string;
   title: string;
   channelId: string;
+}
+
+interface Category {
+  _id: string;
+  name: string;
+  color: string;
 }
 
 interface Analysis {
@@ -62,6 +72,7 @@ interface Pagination {
 export default function AnalysesPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -73,6 +84,14 @@ export default function AnalysesPage() {
     total: 0,
     pages: 0,
   });
+
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [selectedChannel, setSelectedChannel] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [videoInfo, setVideoInfo] = useState<any>(null);
 
   const router = useRouter();
 
@@ -87,6 +106,20 @@ export default function AnalysesPage() {
       }
     } catch (error) {
       console.error("Erro ao buscar canais:", error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setCategories(data.categories);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar categorias:", error);
     }
   };
 
@@ -144,6 +177,7 @@ export default function AnalysesPage() {
 
   useEffect(() => {
     fetchChannels();
+    fetchCategories();
     fetchAnalyses();
     fetchWorkerStatus();
   }, []);
@@ -160,6 +194,99 @@ export default function AnalysesPage() {
 
   const handlePageChange = (page: number) => {
     fetchAnalyses(page, statusFilter, channelFilter);
+  };
+
+  // Extrair videoId da URL do YouTube
+  const extractVideoId = (url: string): string | null => {
+    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  // Buscar informações do vídeo
+  const fetchVideoInfo = async (videoId: string) => {
+    try {
+      const res = await fetch(`/api/youtube/video-info?videoId=${videoId}`);
+      if (!res.ok) throw new Error('Erro ao buscar informações do vídeo');
+      
+      const data = await res.json();
+      if (data.success) {
+        return data.videoInfo;
+      }
+      throw new Error(data.error || 'Vídeo não encontrado');
+    } catch (error) {
+      console.error('Erro ao buscar vídeo:', error);
+      return null;
+    }
+  };
+
+  // Validar URL e buscar informações do vídeo
+  const handleUrlChange = async (url: string) => {
+    setVideoUrl(url);
+    setVideoInfo(null);
+    
+    if (url.trim()) {
+      const videoId = extractVideoId(url);
+      if (videoId) {
+        const info = await fetchVideoInfo(videoId);
+        setVideoInfo(info);
+      }
+    }
+  };
+
+  // Criar nova análise
+  const handleCreateAnalysis = async () => {
+    if (!videoUrl.trim()) {
+      toast.error("URL do vídeo é obrigatória");
+      return;
+    }
+
+    if (!selectedChannel) {
+      toast.error("Selecione um canal");
+      return;
+    }
+
+    const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      toast.error("URL do YouTube inválida");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/analyses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId,
+          videoTitle: videoInfo?.title || 'Vídeo do YouTube',
+          channelId: selectedChannel,
+          categoryId: selectedCategory || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao criar análise");
+      }
+
+      const data = await res.json();
+      toast.success("Análise criada com sucesso!");
+      setShowModal(false);
+      setVideoUrl("");
+      setSelectedChannel("");
+      setSelectedCategory("");
+      setVideoInfo(null);
+      
+      // Recarregar análises
+      fetchAnalyses();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar análise");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getStatusInfo = (status: string) => {
@@ -245,6 +372,15 @@ export default function AnalysesPage() {
                   </div>
                 </div>
               </div>
+              
+              {/* Botão Nova Análise */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Análise
+              </button>
             </div>
           </div>
         </div>
@@ -379,11 +515,11 @@ export default function AnalysesPage() {
                   : "Nenhuma análise foi realizada ainda"}
               </p>
               <button
-                onClick={() => router.push("/videos")}
+                onClick={() => setShowModal(true)}
                 className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
               >
-                <Play className="w-4 h-4 mr-2" />
-                Ir para Vídeos
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Primeira Análise
               </button>
             </div>
           )}
@@ -533,6 +669,124 @@ export default function AnalysesPage() {
             </div>
           )}
         </div>
+
+        {/* Modal Nova Análise */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <Plus className="w-5 h-5 mr-2 text-purple-600" />
+                    Nova Análise
+                  </h2>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* URL do Vídeo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      URL do Vídeo do YouTube
+                    </label>
+                    <div className="relative">
+                      <Youtube className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={videoUrl}
+                        onChange={(e) => handleUrlChange(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Informações do Vídeo */}
+                  {videoInfo && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-medium text-gray-900 mb-2">Informações do Vídeo</h3>
+                      <p className="text-sm text-gray-700 mb-2">{videoInfo.title}</p>
+                      <p className="text-xs text-gray-500">{videoInfo.channelTitle}</p>
+                    </div>
+                  )}
+
+                  {/* Canal */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Canal
+                    </label>
+                    <select
+                      value={selectedChannel}
+                      onChange={(e) => setSelectedChannel(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="">Selecione um canal</option>
+                      {channels.map((channel) => (
+                        <option key={channel._id} value={channel._id}>
+                          {channel.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Categoria (Opcional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Categoria (Opcional)
+                    </label>
+                    <div className="relative">
+                      <Folder className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        <option value="">Sem categoria</option>
+                        {categories.map((category) => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botões */}
+                <div className="flex items-center justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleCreateAnalysis}
+                    disabled={!videoUrl.trim() || !selectedChannel || isSubmitting}
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Criar Análise
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
