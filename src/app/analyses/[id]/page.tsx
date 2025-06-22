@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  Globe,
 } from "lucide-react";
 
 interface Note {
@@ -63,6 +64,7 @@ export default function AnalysisDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
+  const [sendingToWordPress, setSendingToWordPress] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNoteText, setNewNoteText] = useState("");
   const [newNoteType, setNewNoteType] = useState<'resumo' | 'observacao' | 'correlato'>('resumo');
@@ -171,6 +173,38 @@ export default function AnalysisDetailPage() {
       toast.error(error.message || "Erro ao enviar email");
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const sendToWordPress = async () => {
+    if (!analysis) return;
+    
+    setSendingToWordPress(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysisId}/wordpress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao enviar para WordPress");
+      }
+
+      const data = await res.json();
+      toast.success(data.message || "Post enviado para o WordPress com sucesso!");
+      
+      // Se houver URL do post, mostrar link
+      if (data.postUrl) {
+        toast.info(`Ver post: ${data.postUrl}`);
+      }
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar para WordPress");
+    } finally {
+      setSendingToWordPress(false);
     }
   };
 
@@ -693,6 +727,21 @@ export default function AnalysisDetailPage() {
                       >
                         <Mail className="w-4 h-4 mr-2" />
                         Enviar por Email
+                      </button>
+                    )}
+                    
+                    {analysis.status === "completed" && (
+                      <button
+                        onClick={sendToWordPress}
+                        disabled={sendingToWordPress}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {sendingToWordPress ? (
+                          <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Globe className="w-4 h-4 mr-2" />
+                        )}
+                        {sendingToWordPress ? "Enviando..." : "Enviar para Blog"}
                       </button>
                     )}
                   </div>

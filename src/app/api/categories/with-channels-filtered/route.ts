@@ -20,11 +20,13 @@ export async function GET(_: NextRequest) {
     }
 
     const categories = await Category.find({ 
-      userId: user._id
+      userId: user._id,
+      listInVideos: { $ne: false } // Inclui true e undefined (padrão)
     });
     const categoryIds = categories.map(cat => cat._id);
     const allChannels = await Channel.find({ 
-      categoryId: { $in: categoryIds }
+      categoryId: { $in: categoryIds },
+      listInVideos: { $ne: false } // Inclui true e undefined (padrão)
     });
 
     // Agrupar os canais por categoria
@@ -64,7 +66,7 @@ export async function GET(_: NextRequest) {
     return NextResponse.json({ success: true, categories: categoriesWithChannels });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar categorias com canais:', error);
+    console.error('❌ Erro ao buscar categorias com canais filtrados:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-}
+} 
