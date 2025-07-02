@@ -6,7 +6,58 @@ import VideoCache from '@models/VideoCache';
 import { NextRequest, NextResponse } from 'next/server';
 import dayjs from 'dayjs';
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const YOUTUBE_API_KEY2 = process.env.YOUTUBE_API_KEY2;
+
+// Função para fazer requisição com fallback de chaves
+async function fetchYouTubeData(channelId: string, attempt = 1): Promise<any> {
+  const keys = [YOUTUBE_API_KEY, YOUTUBE_API_KEY2];
+  const currentKey = keys[(attempt - 1) % keys.length];
+  
+  const url = `https://www.googleapis.com/youtube/v3/search?key=${currentKey}&channelId=${channelId}&part=snippet&order=date&maxResults=8&type=video`;
+  
+  console.log(`🌐 Tentativa ${attempt} - Requisição para YouTube: ${url}`);
+  
+  try {
+    const res = await fetch(url);
+    const ytJson = await res.json();
+    
+    // 🔍 Console log do retorno da API do YouTube
+    console.log(`📺 Resposta da API do YouTube para canal ${channelId}:`, JSON.stringify(ytJson, null, 2));
+    
+    // Se a resposta não for ok, verifica se é erro de quota/rate limit
+    if (!res.ok) {
+      const errorCode = ytJson.error?.code;
+      const errorMessage = ytJson.error?.message || '';
+      
+      // Erros que indicam problemas de quota/rate limit
+      const quotaErrors = [403, 429];
+      const quotaErrorMessages = ['quota', 'rate', 'limit', 'exceeded', 'quotaExceeded'];
+      
+      const isQuotaError = quotaErrors.includes(errorCode) || 
+                          quotaErrorMessages.some(msg => errorMessage.toLowerCase().includes(msg));
+      
+      // Se for erro de quota e ainda não tentou a segunda chave, tenta novamente
+      if (isQuotaError && attempt < 2) {
+        console.log(`⚠️ Erro de quota detectado na chave ${attempt}, tentando próxima chave...`);
+        return await fetchYouTubeData(channelId, attempt + 1);
+      }
+      
+      // Se chegou aqui, é um erro definitivo
+      throw new Error(`Erro da API do YouTube: ${errorCode} - ${errorMessage}`);
+    }
+    
+    return ytJson;
+  } catch (error: any) {
+    // Se for erro de rede e ainda não tentou a segunda chave, tenta novamente
+    if (attempt < 2) {
+      console.log(`⚠️ Erro de rede na tentativa ${attempt}, tentando próxima chave...`);
+      return await fetchYouTubeData(channelId, attempt + 1);
+    }
+    
+    throw error;
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,35 +108,27 @@ export async function GET(req: NextRequest) {
         console.log(`✅ Usando cache para canal: ${canal.title}`);
         videos = cache.videos;
       } else {
-        const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${canal.youtubeChannelId}&part=snippet&order=date&maxResults=8&type=video`;
-
-        console.log(`🌐 Requisição para YouTube: ${url}`);
-        const res = await fetch(url);
-
-        let ytJson;
         try {
-          ytJson = await res.json();
-        } catch (e: any) {
-          return NextResponse.json({ error: 'Erro ao processar resposta do YouTube', erro: { message: e.message } }, { status: 502 });
+          const ytJson = await fetchYouTubeData(canal.youtubeChannelId);
+          
+          videos = ytJson.items?.map((item: any) => ({
+            videoId: item.id.videoId,
+            title: item.snippet.title,
+            publishedAt: item.snippet.publishedAt,
+            thumbnail: item.snippet.thumbnails.medium.url
+          })) || [];
+
+          await VideoCache.create({
+            userId: token.userId,
+            channelId: canal.youtubeChannelId,
+            date: today,
+            videos
+          });
+        } catch (error: any) {
+          console.error(`❌ Erro ao buscar vídeos do canal ${canal.title}:`, error.message);
+          // Continua com o próximo canal em caso de erro
+          continue;
         }
-
-        if (!res.ok) {
-          return NextResponse.json({ error: 'Erro da API do YouTube', erro: ytJson }, { status: res.status });
-        }
-
-        videos = ytJson.items?.map((item: any) => ({
-          videoId: item.id.videoId,
-          title: item.snippet.title,
-          publishedAt: item.snippet.publishedAt,
-          thumbnail: item.snippet.thumbnails.medium.url
-        })) || [];
-
-        await VideoCache.create({
-          userId: token.userId,
-          channelId: canal.youtubeChannelId,
-          date: today,
-          videos
-        });
       }
 
       if (!categoriasMap.has(categoriaId)) {
