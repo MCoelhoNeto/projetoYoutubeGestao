@@ -57,9 +57,44 @@ export default function VideosPage() {
   );
   const [carregando, setCarregando] = useState(true);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("todas");
+  const [filtroData, setFiltroData] = useState("todas");
   const [modoLista, setModoLista] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const router = useRouter();
+
+  // Função para verificar se um vídeo está dentro do período selecionado
+  const videoEstaNoPeriodo = (publishedAt: string, periodo: string) => {
+    const dataVideo = new Date(publishedAt);
+    const agora = new Date();
+    
+    switch (periodo) {
+      case "esta-semana":
+        // Esta semana: últimos 7 dias
+        const umaSemanaAtras = new Date(agora);
+        umaSemanaAtras.setDate(agora.getDate() - 7);
+        return dataVideo >= umaSemanaAtras;
+      
+      case "este-mes":
+        // Este mês: desde o início do mês atual
+        const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+        return dataVideo >= inicioMes;
+      
+      case "mes-passado":
+        // Mês passado: mês anterior completo
+        const inicioMesPassado = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+        const fimMesPassado = new Date(agora.getFullYear(), agora.getMonth(), 0);
+        return dataVideo >= inicioMesPassado && dataVideo <= fimMesPassado;
+      
+      case "muito-tempo":
+        // Muito tempo atrás: mais de 3 meses
+        const tresMesesAtras = new Date(agora);
+        tresMesesAtras.setMonth(agora.getMonth() - 3);
+        return dataVideo < tresMesesAtras;
+      
+      default:
+        return true; // "todas" - mostra todos os vídeos
+    }
+  };
 
   const buscarVideos = async () => {
     setCarregando(true);
@@ -148,12 +183,68 @@ export default function VideosPage() {
     }
   };
 
+  const aplicarFiltros = () => {
+    let dadosFiltrados = dados;
+
+    // Aplicar filtro de categoria
+    if (categoriaSelecionada !== "todas") {
+      dadosFiltrados = dadosFiltrados.filter((c) => c.categoriaNome === categoriaSelecionada);
+    }
+
+    // Aplicar filtro de data
+    if (filtroData !== "todas") {
+      dadosFiltrados = dadosFiltrados.map((categoria) => ({
+        ...categoria,
+        canais: categoria.canais.map((canal) => ({
+          ...canal,
+          videos: canal.videos.filter((video) => videoEstaNoPeriodo(video.publishedAt, filtroData)),
+        })).filter((canal) => canal.videos.length > 0), // Remove canais sem vídeos
+      })).filter((categoria) => categoria.canais.length > 0); // Remove categorias sem canais
+    }
+
+    setCategoriasFiltradas(dadosFiltrados);
+  };
+
+  // Aplicar filtros sempre que categoriaSelecionada ou filtroData mudar
+  useEffect(() => {
+    aplicarFiltros();
+  }, [categoriaSelecionada, filtroData, dados]);
+
   const aplicarFiltro = (nome: string) => {
     setCategoriaSelecionada(nome);
-    if (nome === "todas") {
-      setCategoriasFiltradas(dados);
+  };
+
+  const aplicarFiltroData = (periodo: string) => {
+    setFiltroData(periodo);
+  };
+
+  const limparFiltros = () => {
+    setCategoriaSelecionada("todas");
+    setFiltroData("todas");
+  };
+
+  // Função para formatar a data relativa (há quanto tempo)
+  const formatarDataRelativa = (publishedAt: string) => {
+    const dataVideo = new Date(publishedAt);
+    const agora = new Date();
+    const diffEmMs = agora.getTime() - dataVideo.getTime();
+    const diffEmDias = Math.floor(diffEmMs / (1000 * 60 * 60 * 24));
+    
+    if (diffEmDias === 0) {
+      return "Hoje";
+    } else if (diffEmDias === 1) {
+      return "Ontem";
+    } else if (diffEmDias < 7) {
+      return `Há ${diffEmDias} dias`;
+    } else if (diffEmDias < 30) {
+      const semanas = Math.floor(diffEmDias / 7);
+      return `Há ${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`;
+    } else if (diffEmDias < 365) {
+      const meses = Math.floor(diffEmDias / 30);
+      return `Há ${meses} ${meses === 1 ? 'mês' : 'meses'}`;
     } else {
-      setCategoriasFiltradas(dados.filter((c) => c.categoriaNome === nome));
+      const anos = Math.floor(diffEmDias / 365);
+      return `Há ${anos} ${anos === 1 ? 'ano' : 'anos'}`;
     }
   };
 
@@ -287,12 +378,12 @@ export default function VideosPage() {
   }, []);
 
   const categoriasUnicas = ["todas", ...dados.map((c) => c.categoriaNome)];
-  const totalVideos = dados.reduce(
+  const totalVideos = categoriasFiltradas.reduce(
     (acc, cat) =>
       acc + cat.canais.reduce((acc2, canal) => acc2 + canal.videos.length, 0),
     0
   );
-  const videosAnalisados = dados.reduce(
+  const videosAnalisados = categoriasFiltradas.reduce(
     (acc, cat) =>
       acc +
       cat.canais.reduce(
@@ -329,6 +420,15 @@ export default function VideosPage() {
                     </h1>
                     <p className="text-sm text-gray-500">
                       {totalVideos} vídeos • {videosAnalisados} analisados
+                      {filtroData !== "todas" && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {filtroData === "esta-semana" && "Esta semana"}
+                          {filtroData === "este-mes" && "Este mês"}
+                          {filtroData === "mes-passado" && "Mês passado"}
+                          {filtroData === "muito-tempo" && "Muito tempo atrás"}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -357,6 +457,21 @@ export default function VideosPage() {
                   </select>
                 </div>
 
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    value={filtroData}
+                    onChange={(e) => aplicarFiltroData(e.target.value)}
+                  >
+                    <option value="todas">Todas as datas</option>
+                    <option value="esta-semana">Esta semana</option>
+                    <option value="este-mes">Este mês</option>
+                    <option value="mes-passado">Mês passado</option>
+                    <option value="muito-tempo">Muito tempo atrás</option>
+                  </select>
+                </div>
+
                 <div className="flex items-center border border-gray-300 rounded-lg">
                   <button
                     onClick={() => setModoLista(false)}
@@ -379,6 +494,17 @@ export default function VideosPage() {
                     <List className="w-4 h-4" />
                   </button>
                 </div>
+
+                {(categoriaSelecionada !== "todas" || filtroData !== "todas") && (
+                  <button
+                    onClick={limparFiltros}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    title="Limpar todos os filtros"
+                  >
+                    <Filter className="w-4 h-4 mr-1" />
+                    Limpar Filtros
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center space-x-3">
@@ -514,10 +640,8 @@ export default function VideosPage() {
                                     <div className="flex items-center space-x-4 text-xs text-gray-500">
                                       <div className="flex items-center space-x-1">
                                         <Calendar className="w-3 h-3" />
-                                        <span>
-                                          {new Date(
-                                            video.publishedAt
-                                          ).toLocaleDateString()}
+                                        <span title={new Date(video.publishedAt).toLocaleDateString()}>
+                                          {formatarDataRelativa(video.publishedAt)}
                                         </span>
                                       </div>
                                       <span
@@ -608,10 +732,8 @@ export default function VideosPage() {
                                   </h4>
                                   <div className="flex items-center space-x-1 text-xs text-gray-500 mb-3">
                                     <Calendar className="w-3 h-3" />
-                                    <span>
-                                      {new Date(
-                                        video.publishedAt
-                                      ).toLocaleDateString()}
+                                    <span title={new Date(video.publishedAt).toLocaleDateString()}>
+                                      {formatarDataRelativa(video.publishedAt)}
                                     </span>
                                   </div>
                                 </a>
